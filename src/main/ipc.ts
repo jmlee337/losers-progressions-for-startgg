@@ -1,5 +1,6 @@
 import { app, ipcMain, safeStorage, shell } from 'electron';
 import Store from 'electron-store';
+import { RendererEvent, RendererTournament } from '../common/types';
 
 export default async function setupIPCs() {
   const store = new Store<{
@@ -159,4 +160,66 @@ export default async function setupIPCs() {
       slug: tournament.slug.slice(11),
     }));
   });
+
+  ipcMain.removeAllListeners('getTournament');
+  ipcMain.handle(
+    'getTournament',
+    async (event, slug: string): Promise<RendererTournament> => {
+      const response = await fetch(
+        `https://www.start.gg/api/-/rest/tournament/${slug}?expand[]=event&expand[]=phase`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'client-version': '20',
+            Cookie: ggSessionCookie,
+          },
+        },
+      );
+      if (response.status !== 200) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+
+      const json = await response.json();
+      const tournamentJson = json.entities?.tournament;
+      if (!(tournamentJson instanceof Object)) {
+        throw new Error('no tournament in response');
+      }
+
+      const eventIdToPhaseIds = new Map<number, number[]>();
+      const phasesJson = json.entities?.phase;
+      if (Array.isArray(phasesJson)) {
+        phasesJson.forEach((phaseJson) => {
+          let phaseIds = eventIdToPhaseIds.get(phaseJson.eventId);
+          if (!phaseIds) {
+            phaseIds = [];
+            eventIdToPhaseIds.set(phaseJson.eventId, phaseIds);
+          }
+          phaseIds.push(phaseJson.id);
+        });
+      }
+
+      const events: RendererEvent[] = [];
+      const eventsJson = json.entities?.event;
+      if (Array.isArray(eventsJson)) {
+        eventsJson.forEach((eventJson) => {
+          const { id } = eventJson;
+          const phaseIds = eventIdToPhaseIds.get(id);
+          if (phaseIds) {
+            events.push({
+              id,
+              phaseIds,
+              name: eventJson.name,
+            });
+          }
+        });
+      }
+
+      return {
+        name: tournamentJson.name,
+        slug: tournamentJson.slug.slice(11),
+        events,
+      };
+    },
+  );
 }

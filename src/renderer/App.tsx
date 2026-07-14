@@ -11,6 +11,8 @@ import {
   IconButton,
   List,
   ListItem,
+  ListItemButton,
+  ListItemIcon,
   ListItemText,
   Stack,
   TextField,
@@ -18,18 +20,25 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { CloudDownload, Settings } from '@mui/icons-material';
-import { useEffect, useState } from 'react';
+import { ArrowBack, CloudDownload, Settings } from '@mui/icons-material';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
 import { lt } from 'semver';
+import { RendererTournament } from '../common/types';
+import SelectTournament from './SelectTournament';
 
 function Hello() {
   const [appVersion, setAppVersion] = useState('');
   const [versionLatest, setVersionLatest] = useState('');
 
   const [settled, setSettled] = useState(false);
+
   const [error, setError] = useState('');
   const [errorOpen, setErrorOpen] = useState(false);
+  const openError = useCallback((message: string) => {
+    setError(message);
+    setErrorOpen(true);
+  }, []);
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false);
@@ -41,6 +50,18 @@ function Hello() {
   const [tournaments, setTournaments] = useState<
     { name: string; slug: string }[]
   >([]);
+  const [selectedTournament, setSelectedTournament] =
+    useState<RendererTournament | null>(null);
+
+  const title = useMemo(() => {
+    if (!isLoggedIn) {
+      return 'Login';
+    }
+    if (!selectedTournament) {
+      return 'Select Tournament';
+    }
+    return 'Select Event';
+  }, [isLoggedIn, selectedTournament]);
 
   useEffect(() => {
     (async () => {
@@ -103,7 +124,7 @@ function Hello() {
                 whiteSpace: 'nowrap',
               }}
             >
-              Choose Tournament:
+              {title}
             </Typography>
             <Tooltip placement="left" title="Settings">
               <IconButton
@@ -117,29 +138,53 @@ function Hello() {
           </Stack>
         </Toolbar>
       </AppBar>
-      <Stack style={{ marginTop: '64px', marginBottom: '8px' }}>
+      <Toolbar />
+      <Stack style={{ marginBottom: '8px' }}>
         {settled && (
           <>
             {isLoggedIn && (
-              <List disablePadding>
-                {tournaments.map((tournament) => (
-                  <ListItem disableGutters key={tournament.slug}>
-                    <ListItemText>
-                      {tournament.name}{' '}
-                      <Typography variant="caption">
-                        ({tournament.slug})
-                      </Typography>
-                    </ListItemText>
-                  </ListItem>
-                ))}
-              </List>
+              <>
+                {selectedTournament && (
+                  <>
+                    <ListItemButton
+                      style={{ paddingLeft: 0 }}
+                      onClick={() => {
+                        setSelectedTournament(null);
+                      }}
+                    >
+                      <ListItemIcon>
+                        <ArrowBack />
+                      </ListItemIcon>
+                      <ListItemText>{selectedTournament.name}</ListItemText>
+                    </ListItemButton>
+                    {selectedTournament.events.length > 0 && (
+                      <List disablePadding>
+                        {selectedTournament.events.map((event) => (
+                          <ListItem disableGutters key={event.id}>
+                            <ListItemText>{event.name}</ListItemText>
+                          </ListItem>
+                        ))}
+                      </List>
+                    )}
+                    {selectedTournament.events.length === 0 && (
+                      <Alert severity="warning">No configurable events</Alert>
+                    )}
+                  </>
+                )}
+                {!selectedTournament && (
+                  <SelectTournament
+                    tournaments={tournaments}
+                    setTournament={setSelectedTournament}
+                    openError={openError}
+                  />
+                )}
+              </>
             )}
             {!isLoggedIn && (
               <Stack style={{ alignItems: 'start' }} spacing="8px">
                 <TextField
                   label="start.gg email"
                   size="small"
-                  variant="outlined"
                   value={email}
                   onChange={(event) => {
                     setEmail(event.target.value);
