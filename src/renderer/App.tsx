@@ -1,41 +1,246 @@
+import {
+  Alert,
+  AppBar,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  IconButton,
+  List,
+  ListItem,
+  ListItemText,
+  Stack,
+  TextField,
+  Toolbar,
+  Tooltip,
+  Typography,
+} from '@mui/material';
+import { CloudDownload, Settings } from '@mui/icons-material';
+import { useEffect, useState } from 'react';
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
-import icon from '../../assets/icon.svg';
-import './App.css';
+import { lt } from 'semver';
 
 function Hello() {
+  const [appVersion, setAppVersion] = useState('');
+  const [versionLatest, setVersionLatest] = useState('');
+
+  const [settled, setSettled] = useState(false);
+  const [error, setError] = useState('');
+  const [errorOpen, setErrorOpen] = useState(false);
+
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const [tournaments, setTournaments] = useState<
+    { name: string; slug: string }[]
+  >([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const appVersionPromise = window.electron.getAppVersion();
+        const versionLatestPromise = window.electron.getVersionLatest();
+        const isLoggedInPromise = window.electron.isLoggedIn();
+        const initAppVersion = await appVersionPromise;
+        const initVersionLatest = await versionLatestPromise;
+        setAppVersion(initAppVersion);
+        setVersionLatest(initVersionLatest);
+        if (initVersionLatest && lt(initAppVersion, initVersionLatest)) {
+          setSettingsOpen(true);
+        }
+        const initIsLoggedIn = await isLoggedInPromise;
+        setIsLoggedIn(initIsLoggedIn);
+        if (initIsLoggedIn) {
+          setTournaments(await window.electron.getTournaments());
+        } else {
+          setEmail(await window.electron.getEmail());
+          setPassword(await window.electron.getPassword());
+        }
+      } catch (e: unknown) {
+        if (e instanceof Error) {
+          setError(e.message);
+          setErrorOpen(true);
+        }
+      } finally {
+        setSettled(true);
+      }
+    })();
+  }, []);
   return (
-    <div>
-      <div className="Hello">
-        <img width="200" alt="icon" src={icon} />
-      </div>
-      <h1>electron-react-boilerplate</h1>
-      <div className="Hello">
-        <a
-          href="https://electron-react-boilerplate.js.org/"
-          target="_blank"
-          rel="noreferrer"
+    <>
+      <AppBar
+        position="fixed"
+        sx={{
+          backgroundColor: (theme) => theme.palette.common.white,
+          color: (theme) => theme.palette.text.primary,
+        }}
+      >
+        <Toolbar disableGutters style={{ paddingLeft: '8px' }}>
+          <Stack
+            direction="row"
+            style={{
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: '100%',
+            }}
+          >
+            <Typography
+              variant="body1"
+              sx={{ color: (theme) => theme.palette.text.disabled }}
+              style={{
+                flexGrow: 1,
+                flexShrink: 1,
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Choose Tournament:
+            </Typography>
+            <Tooltip placement="left" title="Settings">
+              <IconButton
+                onClick={() => {
+                  setSettingsOpen(true);
+                }}
+              >
+                <Settings />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        </Toolbar>
+      </AppBar>
+      <Stack style={{ marginTop: '64px', marginBottom: '8px' }}>
+        {settled && (
+          <>
+            {isLoggedIn && (
+              <List disablePadding>
+                {tournaments.map((tournament) => (
+                  <ListItem disableGutters key={tournament.slug}>
+                    <ListItemText>
+                      {tournament.name}{' '}
+                      <Typography variant="caption">
+                        ({tournament.slug})
+                      </Typography>
+                    </ListItemText>
+                  </ListItem>
+                ))}
+              </List>
+            )}
+            {!isLoggedIn && (
+              <Stack style={{ alignItems: 'start' }} spacing="8px">
+                <TextField
+                  label="start.gg email"
+                  size="small"
+                  variant="outlined"
+                  value={email}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                  }}
+                />
+                <TextField
+                  label="start.gg password"
+                  size="small"
+                  type="password"
+                  value={password}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                  }}
+                />
+                <Button
+                  disabled={loggingIn}
+                  type="submit"
+                  variant="contained"
+                  onClick={async () => {
+                    try {
+                      setLoggingIn(true);
+                      await window.electron.login(email, password);
+                      setIsLoggedIn(true);
+                      setTournaments(await window.electron.getTournaments());
+                    } catch (e: unknown) {
+                      if (e instanceof Error) {
+                        setError(e.message);
+                        setErrorOpen(true);
+                      }
+                    } finally {
+                      setLoggingIn(false);
+                    }
+                  }}
+                >
+                  Login!
+                </Button>
+              </Stack>
+            )}
+          </>
+        )}
+        {!settled && <CircularProgress />}
+      </Stack>
+      <Dialog open={settingsOpen}>
+        <Stack
+          direction="row"
+          style={{
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginRight: '24px',
+          }}
         >
-          <button type="button">
-            <span role="img" aria-label="books">
-              📚
-            </span>
-            Read our docs
-          </button>
-        </a>
-        <a
-          href="https://github.com/sponsors/electron-react-boilerplate"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <button type="button">
-            <span role="img" aria-label="folded hands">
-              🙏
-            </span>
-            Donate
-          </button>
-        </a>
-      </div>
-    </div>
+          <DialogTitle>Settings</DialogTitle>
+          <Typography variant="caption">
+            Losers Progressions for start.gg v{appVersion}
+          </Typography>
+        </Stack>
+        {appVersion && versionLatest && lt(appVersion, versionLatest) && (
+          <DialogContent>
+            <Alert
+              severity="warning"
+              style={{ marginTop: '8px' }}
+              action={
+                <Button
+                  endIcon={<CloudDownload />}
+                  variant="contained"
+                  onClick={() => {
+                    window.electron.update();
+                  }}
+                >
+                  Quit and download
+                </Button>
+              }
+            >
+              Update available! v{versionLatest}
+            </Alert>
+          </DialogContent>
+        )}
+        {isLoggedIn && (
+          <DialogActions>
+            <Button
+              color="warning"
+              variant="contained"
+              onClick={async () => {
+                await window.electron.logout();
+                setEmail(await window.electron.getEmail());
+                setPassword(await window.electron.getPassword());
+                setIsLoggedIn(false);
+                setSettingsOpen(false);
+              }}
+            >
+              Logout
+            </Button>
+          </DialogActions>
+        )}
+      </Dialog>
+      <Dialog open={errorOpen}>
+        <DialogContent>
+          <DialogContentText>{error}</DialogContentText>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
