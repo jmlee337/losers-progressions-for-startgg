@@ -194,14 +194,16 @@ export default async function setupIPCs() {
       const eventIdToPhaseIds = new Map<number, number[]>();
       const phasesJson = json.entities?.phase;
       if (Array.isArray(phasesJson)) {
-        phasesJson.forEach((phaseJson) => {
-          let phaseIds = eventIdToPhaseIds.get(phaseJson.eventId);
-          if (!phaseIds) {
-            phaseIds = [];
-            eventIdToPhaseIds.set(phaseJson.eventId, phaseIds);
-          }
-          phaseIds.push(phaseJson.id);
-        });
+        phasesJson
+          .filter((phaseJson) => phaseJson.state === 1)
+          .forEach((phaseJson) => {
+            let phaseIds = eventIdToPhaseIds.get(phaseJson.eventId);
+            if (!phaseIds) {
+              phaseIds = [];
+              eventIdToPhaseIds.set(phaseJson.eventId, phaseIds);
+            }
+            phaseIds.push(phaseJson.id);
+          });
       }
 
       const events: SelectableEvent[] = [];
@@ -210,7 +212,7 @@ export default async function setupIPCs() {
         eventsJson.forEach((eventJson) => {
           const { id } = eventJson;
           const phaseIds = eventIdToPhaseIds.get(id);
-          if (phaseIds) {
+          if (phaseIds && phaseIds.length > 1) {
             events.push({
               id,
               phaseIds,

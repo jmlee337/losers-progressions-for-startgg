@@ -38,7 +38,13 @@ export default function SelectTournament({
   return (
     <>
       <form
-        style={{ display: 'flex', flexDirection: 'row', gap: '8px' }}
+        style={{
+          display: 'flex',
+          flexDirection: 'row',
+          gap: '8px',
+          paddingLeft: '8px',
+          paddingRight: '8px',
+        }}
         onSubmit={(ev: FormEvent<HTMLFormElement>) => {
           ev.preventDefault();
           ev.stopPropagation();
@@ -69,6 +75,7 @@ export default function SelectTournament({
             disableGutters
             disabled={getting}
             key={tournament.slug}
+            style={{ paddingLeft: '8px', paddingRight: '8px' }}
             onClick={() => {
               getTournament(tournament.slug);
             }}

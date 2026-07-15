@@ -174,7 +174,14 @@ export default function SelectedEvent({ event }: { event: RendererEvent }) {
   return (
     <Stack
       direction="row"
-      style={{ alignItems: 'start', flexWrap: 'wrap', gap: '8px' }}
+      style={{
+        alignItems: 'start',
+        flexWrap: 'wrap',
+        gap: '8px',
+        paddingTop: '8px',
+        paddingLeft: '8px',
+        paddingRight: '8px',
+      }}
     >
       {event.phases.map((phase) => (
         <Card key={phase.id}>

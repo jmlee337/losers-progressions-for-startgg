@@ -35,6 +35,7 @@ export default function SelectEvent({
           disableGutters
           disabled={getting}
           key={event.id}
+          style={{ paddingLeft: '8px', paddingRight: '8px' }}
           onClick={() => {
             getEvent(event);
           }}

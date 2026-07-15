@@ -18,7 +18,12 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { ArrowBack, CloudDownload, Settings } from '@mui/icons-material';
+import {
+  ArrowBack,
+  CloudDownload,
+  Refresh,
+  Settings,
+} from '@mui/icons-material';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
 import { lt } from 'semver';
@@ -147,38 +152,66 @@ function Hello() {
         </Toolbar>
       </AppBar>
       <Toolbar />
-      <Stack style={{ marginBottom: '8px' }}>
+      <Stack style={{ margin: '0 -8px 8px -8px' }}>
         {settled && (
           <>
             {isLoggedIn && (
               <>
                 {selectedTournament && (
                   <>
-                    <ListItemButton
-                      style={{ paddingLeft: 0 }}
-                      onClick={() => {
-                        setSelectedTournament(null);
-                        setSelectedEvent(null);
-                      }}
-                    >
-                      <ListItemIcon>
-                        <ArrowBack />
-                      </ListItemIcon>
-                      <ListItemText>{selectedTournament.name}</ListItemText>
-                    </ListItemButton>
-                    {selectedEvent && (
-                      <>
-                        <ListItemButton
-                          style={{ paddingLeft: 0 }}
-                          onClick={() => {
-                            setSelectedEvent(null);
+                    <Stack direction="row" style={{ alignItems: 'center' }}>
+                      <ListItemButton
+                        style={{ paddingLeft: '8px', paddingRight: '8px' }}
+                        onClick={() => {
+                          setSelectedTournament(null);
+                          setSelectedEvent(null);
+                        }}
+                      >
+                        <ListItemIcon>
+                          <ArrowBack />
+                        </ListItemIcon>
+                        <ListItemText>{selectedTournament.name}</ListItemText>
+                      </ListItemButton>
+                      <Tooltip title="Refresh" placement="left">
+                        <IconButton
+                          onClick={async () => {
+                            setSelectedTournament(
+                              await window.electron.getTournament(
+                                selectedTournament.slug,
+                              ),
+                            );
                           }}
                         >
-                          <ListItemIcon>
-                            <ArrowBack />
-                          </ListItemIcon>
-                          <ListItemText>{selectedEvent.name}</ListItemText>
-                        </ListItemButton>
+                          <Refresh />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
+                    {selectedEvent && (
+                      <>
+                        <Stack direction="row" style={{ alignItems: 'center' }}>
+                          <ListItemButton
+                            style={{ paddingLeft: '8px', paddingRight: '8px' }}
+                            onClick={() => {
+                              setSelectedEvent(null);
+                            }}
+                          >
+                            <ListItemIcon>
+                              <ArrowBack />
+                            </ListItemIcon>
+                            <ListItemText>{selectedEvent.name}</ListItemText>
+                          </ListItemButton>
+                          <Tooltip title="Refresh" placement="left">
+                            <IconButton
+                              onClick={async () => {
+                                setSelectedEvent(
+                                  await window.electron.getEvent(selectedEvent),
+                                );
+                              }}
+                            >
+                              <Refresh />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
                         {selectedEvent.phases.length > 0 && (
                           <SelectedEvent event={selectedEvent} />
                         )}
