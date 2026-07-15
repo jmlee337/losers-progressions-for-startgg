@@ -1,11 +1,23 @@
-export type RendererEvent = {
+export type RendererPhase = {
+  id: number;
+  name: string;
+};
+
+export type SelectableEvent = {
   id: number;
   name: string;
   phaseIds: number[];
 };
 
-export type RendererTournament = {
+export type RendererEvent = SelectableEvent & {
+  phases: RendererPhase[];
+};
+
+export type SelectableTournament = {
   name: string;
   slug: string;
-  events: RendererEvent[];
+};
+
+export type RendererTournament = SelectableTournament & {
+  events: SelectableEvent[];
 };

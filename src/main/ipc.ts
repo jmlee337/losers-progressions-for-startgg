@@ -1,6 +1,11 @@
 import { app, ipcMain, safeStorage, shell } from 'electron';
 import Store from 'electron-store';
-import { RendererEvent, RendererTournament } from '../common/types';
+import {
+  SelectableEvent,
+  RendererTournament,
+  RendererPhase,
+  RendererEvent,
+} from '../common/types';
 
 export default async function setupIPCs() {
   const store = new Store<{
@@ -199,7 +204,7 @@ export default async function setupIPCs() {
         });
       }
 
-      const events: RendererEvent[] = [];
+      const events: SelectableEvent[] = [];
       const eventsJson = json.entities?.event;
       if (Array.isArray(eventsJson)) {
         eventsJson.forEach((eventJson) => {
@@ -219,6 +224,46 @@ export default async function setupIPCs() {
         name: tournamentJson.name,
         slug: tournamentJson.slug.slice(11),
         events,
+      };
+    },
+  );
+
+  ipcMain.removeAllListeners('getEvent');
+  ipcMain.handle(
+    'getEvent',
+    async (ev, event: SelectableEvent): Promise<RendererEvent> => {
+      const phases = await Promise.all(
+        event.phaseIds.map(async (phaseId): Promise<RendererPhase> => {
+          const response = await fetch(
+            `https://www.start.gg/api/-/rest/phase/${phaseId}?expand[]=phaseLink`,
+            {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'client-version': '20',
+                Cookie: ggSessionCookie,
+              },
+            },
+          );
+          if (response.status !== 200) {
+            throw new Error(`${response.status}: ${response.statusText}`);
+          }
+
+          const json = await response.json();
+          const phaseJson = json.entities?.phase;
+          if (!(phaseJson instanceof Object)) {
+            throw new Error('no tournament in response');
+          }
+
+          return {
+            id: phaseJson.id,
+            name: phaseJson.name,
+          };
+        }),
+      );
+      return {
+        ...event,
+        phases,
       };
     },
   );

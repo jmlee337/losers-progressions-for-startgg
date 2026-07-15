@@ -9,8 +9,6 @@ import {
   DialogContentText,
   DialogTitle,
   IconButton,
-  List,
-  ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
@@ -24,8 +22,13 @@ import { ArrowBack, CloudDownload, Settings } from '@mui/icons-material';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
 import { lt } from 'semver';
-import { RendererTournament } from '../common/types';
+import {
+  RendererEvent,
+  RendererTournament,
+  SelectableTournament,
+} from '../common/types';
 import SelectTournament from './SelectTournament';
+import SelectEvent from './SelectEvent';
 
 function Hello() {
   const [appVersion, setAppVersion] = useState('');
@@ -47,11 +50,12 @@ function Hello() {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const [tournaments, setTournaments] = useState<
-    { name: string; slug: string }[]
-  >([]);
+  const [tournaments, setTournaments] = useState<SelectableTournament[]>([]);
   const [selectedTournament, setSelectedTournament] =
     useState<RendererTournament | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<RendererEvent | null>(
+    null,
+  );
 
   const title = useMemo(() => {
     if (!isLoggedIn) {
@@ -60,8 +64,11 @@ function Hello() {
     if (!selectedTournament) {
       return 'Select Tournament';
     }
-    return 'Select Event';
-  }, [isLoggedIn, selectedTournament]);
+    if (!selectedEvent) {
+      return 'Select Event';
+    }
+    return 'Edit Progressions!';
+  }, [isLoggedIn, selectedEvent, selectedTournament]);
 
   useEffect(() => {
     (async () => {
@@ -150,6 +157,7 @@ function Hello() {
                       style={{ paddingLeft: 0 }}
                       onClick={() => {
                         setSelectedTournament(null);
+                        setSelectedEvent(null);
                       }}
                     >
                       <ListItemIcon>
@@ -157,17 +165,47 @@ function Hello() {
                       </ListItemIcon>
                       <ListItemText>{selectedTournament.name}</ListItemText>
                     </ListItemButton>
-                    {selectedTournament.events.length > 0 && (
-                      <List disablePadding>
-                        {selectedTournament.events.map((event) => (
-                          <ListItem disableGutters key={event.id}>
-                            <ListItemText>{event.name}</ListItemText>
-                          </ListItem>
-                        ))}
-                      </List>
+                    {selectedEvent && (
+                      <>
+                        <ListItemButton
+                          style={{ paddingLeft: 0 }}
+                          onClick={() => {
+                            setSelectedEvent(null);
+                          }}
+                        >
+                          <ListItemIcon>
+                            <ArrowBack />
+                          </ListItemIcon>
+                          <ListItemText>{selectedEvent.name}</ListItemText>
+                        </ListItemButton>
+                        {selectedEvent.phases.length > 0 &&
+                          selectedEvent.phases.map((phase) => (
+                            <ListItemText key={phase.id}>
+                              {phase.name}
+                            </ListItemText>
+                          ))}
+                        {selectedEvent.phases.length === 0 && (
+                          <Alert severity="warning">
+                            No configurable phases
+                          </Alert>
+                        )}
+                      </>
                     )}
-                    {selectedTournament.events.length === 0 && (
-                      <Alert severity="warning">No configurable events</Alert>
+                    {!selectedEvent && (
+                      <>
+                        {selectedTournament.events.length > 0 && (
+                          <SelectEvent
+                            events={selectedTournament.events}
+                            setEvent={setSelectedEvent}
+                            openError={openError}
+                          />
+                        )}
+                        {selectedTournament.events.length === 0 && (
+                          <Alert severity="warning">
+                            No configurable events
+                          </Alert>
+                        )}
+                      </>
                     )}
                   </>
                 )}

@@ -7,14 +7,14 @@ import {
   Typography,
 } from '@mui/material';
 import { FormEvent, useCallback, useState } from 'react';
-import { RendererTournament } from '../common/types';
+import { RendererTournament, SelectableTournament } from '../common/types';
 
 export default function SelectTournament({
   tournaments,
   setTournament,
   openError,
 }: {
-  tournaments: { name: string; slug: string }[];
+  tournaments: SelectableTournament[];
   setTournament: (tournament: RendererTournament) => void;
   openError: (message: string) => void;
 }) {
@@ -34,6 +34,7 @@ export default function SelectTournament({
     },
     [openError, setTournament],
   );
+
   return (
     <>
       <form
@@ -66,6 +67,7 @@ export default function SelectTournament({
         {tournaments.map((tournament) => (
           <ListItemButton
             disableGutters
+            disabled={getting}
             key={tournament.slug}
             onClick={() => {
               getTournament(tournament.slug);

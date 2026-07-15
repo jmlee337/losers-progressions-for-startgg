@@ -1,5 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { RendererTournament } from '../common/types';
+import {
+  RendererEvent,
+  RendererTournament,
+  SelectableEvent,
+} from '../common/types';
 
 export type Channels = 'ipc-example';
 
@@ -18,6 +22,8 @@ const electronHandler = {
     ipcRenderer.invoke('getTournaments'),
   getTournament: (slug: string): Promise<RendererTournament> =>
     ipcRenderer.invoke('getTournament', slug),
+  getEvent: (event: SelectableEvent): Promise<RendererEvent> =>
+    ipcRenderer.invoke('getEvent', event),
 };
 
 contextBridge.exposeInMainWorld('electron', electronHandler);
