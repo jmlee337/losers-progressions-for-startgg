@@ -3,8 +3,8 @@ import Store from 'electron-store';
 import {
   SelectableEvent,
   RendererTournament,
-  RendererPhase,
   RendererEvent,
+  ExistingOriginPhaseLink,
 } from '../common/types';
 
 export default async function setupIPCs() {
@@ -232,8 +232,8 @@ export default async function setupIPCs() {
   ipcMain.handle(
     'getEvent',
     async (ev, event: SelectableEvent): Promise<RendererEvent> => {
-      const phases = await Promise.all(
-        event.phaseIds.map(async (phaseId): Promise<RendererPhase> => {
+      const intermediatePhases = await Promise.all(
+        event.phaseIds.map(async (phaseId) => {
           const response = await fetch(
             `https://www.start.gg/api/-/rest/phase/${phaseId}?expand[]=phaseLink`,
             {
@@ -255,15 +255,67 @@ export default async function setupIPCs() {
             throw new Error('no tournament in response');
           }
 
+          const { id } = phaseJson;
+          let originPhaseLinks: ExistingOriginPhaseLink[] = [];
+          const jsonPhaseLinks = json.entities?.phaseLink;
+          if (Array.isArray(jsonPhaseLinks)) {
+            originPhaseLinks = jsonPhaseLinks.filter(
+              (jsonPhaseLink) => jsonPhaseLink.originPhaseId === id,
+            );
+          }
+
           return {
-            id: phaseJson.id,
+            id,
+            originPhaseLinks,
             name: phaseJson.name,
+            bracketType: phaseJson.bracketType,
           };
         }),
       );
+
+      const phaseIdToNameAndBracketType = new Map<
+        number,
+        { name: string; bracketType: number }
+      >();
+      intermediatePhases.forEach((intermediatePhase) => {
+        phaseIdToNameAndBracketType.set(intermediatePhase.id, {
+          name: intermediatePhase.name,
+          bracketType: intermediatePhase.bracketType,
+        });
+      });
       return {
         ...event,
-        phases,
+        phases: intermediatePhases.map((intermediatePhase) => ({
+          id: intermediatePhase.id,
+          name: intermediatePhase.name,
+          originPhaseLinks: intermediatePhase.originPhaseLinks.map(
+            (originPhaseLink) => {
+              const nameAndBracketType = phaseIdToNameAndBracketType.get(
+                originPhaseLink.destPhaseId,
+              );
+              if (!nameAndBracketType) {
+                throw new Error(
+                  `phase not found: ${originPhaseLink.destPhaseId}`,
+                );
+              }
+
+              let destBracketSideDesc = '';
+              if (nameAndBracketType.bracketType === 2) {
+                if (originPhaseLink.destBracketSide === 1) {
+                  destBracketSideDesc = 'Winners';
+                } else {
+                  destBracketSideDesc = 'Losers';
+                }
+              }
+
+              return {
+                ...originPhaseLink,
+                destPhaseName: nameAndBracketType.name,
+                destBracketSideDesc,
+              };
+            },
+          ),
+        })),
       };
     },
   );

@@ -29,6 +29,7 @@ import {
 } from '../common/types';
 import SelectTournament from './SelectTournament';
 import SelectEvent from './SelectEvent';
+import SelectedEvent from './SelectedEvent';
 
 function Hello() {
   const [appVersion, setAppVersion] = useState('');
@@ -178,12 +179,9 @@ function Hello() {
                           </ListItemIcon>
                           <ListItemText>{selectedEvent.name}</ListItemText>
                         </ListItemButton>
-                        {selectedEvent.phases.length > 0 &&
-                          selectedEvent.phases.map((phase) => (
-                            <ListItemText key={phase.id}>
-                              {phase.name}
-                            </ListItemText>
-                          ))}
+                        {selectedEvent.phases.length > 0 && (
+                          <SelectedEvent event={selectedEvent} />
+                        )}
                         {selectedEvent.phases.length === 0 && (
                           <Alert severity="warning">
                             No configurable phases
