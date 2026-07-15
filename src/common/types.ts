@@ -1,32 +1,3 @@
-/*
-originPhaseLinks: [
-  {
-    "destPhaseId": 1775590,
-    "maintainMatchup": true,
-    "isDefault": false,
-    "type": 1
-    "destSeedOrder": 0,
-    "destBracketSide": 1,
-    "id": 16167654,
-    "originPlacement": 3,
-    "originPhaseId": 1598103,
-    "originLosses": 0
-  },
-  {
-    "destPhaseId": 2334556,
-    "maintainMatchup": false,
-    "isDefault": false,
-    "type":1,
-    "destSeedOrder": 0,
-    "destBracketSide": 1,
-    "cId": "2334556-1",
-    "originPlacement":5,
-    "originPhaseId":1598103,
-    "originLosses":1|null
-  },
-]
-*/
-
 type BaseOriginPhaseLink = {
   destPhaseId: number;
   maintainMatchup: boolean;
@@ -56,6 +27,8 @@ export type RendererOriginPhaseLink = ExistingOriginPhaseLink & {
 export type RendererPhase = {
   id: number;
   name: string;
+  bracketType: number;
+  groupCount: number;
   originPhaseLinks: RendererOriginPhaseLink[];
 };
 

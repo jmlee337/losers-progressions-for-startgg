@@ -269,6 +269,7 @@ export default async function setupIPCs() {
             originPhaseLinks,
             name: phaseJson.name,
             bracketType: phaseJson.bracketType,
+            groupCount: phaseJson.groupCount,
           };
         }),
       );
@@ -288,6 +289,8 @@ export default async function setupIPCs() {
         phases: intermediatePhases.map((intermediatePhase) => ({
           id: intermediatePhase.id,
           name: intermediatePhase.name,
+          bracketType: intermediatePhase.bracketType,
+          groupCount: intermediatePhase.groupCount,
           originPhaseLinks: intermediatePhase.originPhaseLinks.map(
             (originPhaseLink) => {
               const nameAndBracketType = phaseIdToNameAndBracketType.get(

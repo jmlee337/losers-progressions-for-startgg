@@ -316,7 +316,12 @@ function Hello() {
           </DialogActions>
         )}
       </Dialog>
-      <Dialog open={errorOpen}>
+      <Dialog
+        open={errorOpen}
+        onClose={() => {
+          setErrorOpen(false);
+        }}
+      >
         <DialogContent>
           <DialogContentText>{error}</DialogContentText>
         </DialogContent>
