@@ -57,8 +57,10 @@ function Hello() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [tournaments, setTournaments] = useState<SelectableTournament[]>([]);
+  const [gettingTournament, setGettingTournament] = useState(false);
   const [selectedTournament, setSelectedTournament] =
     useState<RendererTournament | null>(null);
+  const [gettingEvent, setGettingEvent] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<RendererEvent | null>(
     null,
   );
@@ -174,12 +176,22 @@ function Hello() {
                       </ListItemButton>
                       <Tooltip title="Refresh" placement="left">
                         <IconButton
+                          disabled={gettingTournament}
                           onClick={async () => {
-                            setSelectedTournament(
-                              await window.electron.getTournament(
-                                selectedTournament.slug,
-                              ),
-                            );
+                            try {
+                              setGettingTournament(true);
+                              setSelectedTournament(
+                                await window.electron.getTournament(
+                                  selectedTournament.slug,
+                                ),
+                              );
+                            } catch (e: unknown) {
+                              if (e instanceof Error) {
+                                openError(e.message);
+                              }
+                            } finally {
+                              setGettingTournament(false);
+                            }
                           }}
                         >
                           <Refresh />
@@ -202,10 +214,22 @@ function Hello() {
                           </ListItemButton>
                           <Tooltip title="Refresh" placement="left">
                             <IconButton
+                              disabled={gettingEvent}
                               onClick={async () => {
-                                setSelectedEvent(
-                                  await window.electron.getEvent(selectedEvent),
-                                );
+                                try {
+                                  setGettingEvent(true);
+                                  setSelectedEvent(
+                                    await window.electron.getEvent(
+                                      selectedEvent,
+                                    ),
+                                  );
+                                } catch (e: unknown) {
+                                  if (e instanceof Error) {
+                                    openError(e.message);
+                                  }
+                                } finally {
+                                  setGettingEvent(false);
+                                }
                               }}
                             >
                               <Refresh />
@@ -217,9 +241,18 @@ function Hello() {
                             event={selectedEvent}
                             openError={openError}
                             refresh={async () => {
-                              setSelectedEvent(
-                                await window.electron.getEvent(selectedEvent),
-                              );
+                              try {
+                                setGettingEvent(true);
+                                setSelectedEvent(
+                                  await window.electron.getEvent(selectedEvent),
+                                );
+                              } catch (e: unknown) {
+                                if (e instanceof Error) {
+                                  openError(e.message);
+                                }
+                              } finally {
+                                setGettingEvent(false);
+                              }
                             }}
                           />
                         )}
