@@ -27,12 +27,22 @@ import {
   losersPlacementToTopN,
   singleElimPlacementToTopN,
 } from '../common/constants';
+import withOrdinalSuffix from './withOrdinalSuffix';
+
+function arrayRange(start: number, stop: number) {
+  if (start < stop) {
+    return [];
+  }
+
+  return Array.from(
+    { length: stop - start + 1 },
+    (value, index) => start + index,
+  );
+}
 
 const seNumProgressingValues = [0, 1, 2, 4, 8, 16, 32];
 const deNumProgressingValues = [0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32];
-const otherProgressingValues = [
-  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-];
+const otherProgressingValues = arrayRange(0, 16);
 function bracketTypeToProgressingValues(bracketType: number) {
   switch (bracketType) {
     case 1:
@@ -56,6 +66,71 @@ function bracketTypeToMenuItems(bracketType: number) {
       {n}
     </MenuItem>
   ));
+}
+
+function getNextPlacement(phase: RendererPhase) {
+  const placementMax = Math.max(
+    ...phase.originPhaseLinks.map(
+      (originPhaseLink) => originPhaseLink.originPlacement,
+    ),
+  );
+  if (phase.numProgressing > placementMax) {
+    return phase.numProgressing + 1;
+  }
+
+  if (phase.bracketType === 1) {
+    const allPlacements = Array.from(singleElimPlacementToTopN.keys());
+    const index = allPlacements.indexOf(placementMax);
+    if (index === -1 || index >= allPlacements.length - 1) {
+      return 0;
+    }
+    return allPlacements[index + 1];
+  }
+  if (phase.bracketType === 2) {
+    const allPlacements = Array.from(losersPlacementToTopN.keys());
+    const index = allPlacements.indexOf(placementMax);
+    if (index === -1 || index >= allPlacements.length - 1) {
+      return 0;
+    }
+    return allPlacements[index + 1];
+  }
+  if (
+    phase.bracketType === 3 ||
+    phase.bracketType === 4 ||
+    phase.bracketType === 6 ||
+    phase.bracketType === 7
+  ) {
+    return placementMax + 1;
+  }
+  return 0;
+}
+
+function getPlacements(start: number, bracketType: number) {
+  if (bracketType === 1) {
+    const allPlacements = Array.from(singleElimPlacementToTopN.keys());
+    const index = allPlacements.indexOf(start);
+    if (index === -1) {
+      return [];
+    }
+    return allPlacements.slice(index);
+  }
+  if (bracketType === 2) {
+    const allPlacements = Array.from(losersPlacementToTopN.keys());
+    const index = allPlacements.indexOf(start);
+    if (index === -1) {
+      return [];
+    }
+    return allPlacements.slice(index);
+  }
+  if (
+    bracketType === 3 ||
+    bracketType === 4 ||
+    bracketType === 6 ||
+    bracketType === 7
+  ) {
+    return arrayRange(start, 16);
+  }
+  return [];
 }
 
 export default function SelectedPhase({
@@ -296,6 +371,41 @@ export default function SelectedPhase({
       ));
   }, [phase, phaseIdToName]);
 
+  const nextPlacement = useMemo(() => {
+    if (!phase) {
+      return 0;
+    }
+
+    return getNextPlacement(phase);
+  }, [phase]);
+  const placementMenuItems = useMemo(() => {
+    if (
+      phase === null ||
+      phase.numProgressing === 0 ||
+      phase.originPhaseLinks.some(
+        (originPhaseLink) => originPhaseLink.type === 2,
+      )
+    ) {
+      return [];
+    }
+
+    const placements = getPlacements(
+      getNextPlacement(phase),
+      phase.bracketType,
+    );
+    return [
+      <MenuItem value="remainder" key="remainder">
+        Remainder
+      </MenuItem>,
+    ].concat(
+      placements.map((placement) => (
+        <MenuItem value={placement} key={placement}>
+          {withOrdinalSuffix(placement)}
+        </MenuItem>
+      )),
+    );
+  }, [phase]);
+
   return (
     <Dialog
       open={phase !== null}
@@ -395,10 +505,9 @@ export default function SelectedPhase({
                 style={{
                   alignSelf: 'end',
                   display: 'flex',
-                  flexDirection: 'column',
+                  flexDirection: 'row',
                   gap: '8px',
                   paddingTop: '12px',
-                  width: '200px',
                 }}
                 onSubmit={(ev) => {
                   ev.preventDefault();
@@ -443,27 +552,142 @@ export default function SelectedPhase({
                     labelId="num-progressing-input-label"
                     name="numProgressing"
                     size="small"
+                    style={{ width: '165px' }}
                   >
                     {numProgressingMenuItems}
                   </Select>
                 </FormControl>
                 <FormControl>
-                  <InputLabel id="destination-phase-input-label">
+                  <InputLabel id="num-progressing-destination-phase-input-label">
                     Destination Phase
                   </InputLabel>
                   <Select
                     disabled={fetching}
                     defaultValue={phase.winnersTargetPhaseId ?? 0}
                     label="Destination Phase"
-                    labelId="destination-phase-input-label"
+                    labelId="num-progressing-destination-phase-input-label"
                     name="winnersTargetPhaseId"
                     size="small"
+                    style={{ width: '165px' }}
                   >
                     {destinationPhaseMenuItems}
                   </Select>
                 </FormControl>
-                <Button type="submit" variant="contained">
+                <Button
+                  type="submit"
+                  variant="contained"
+                  style={{ width: '70px' }}
+                >
                   Save
+                </Button>
+              </form>
+            )}
+          {phase.numProgressing > 0 &&
+            phase.originPhaseLinks.length > 0 &&
+            placementMenuItems.length > 0 && (
+              <form
+                style={{
+                  alignSelf: 'end',
+                  display: 'flex',
+                  flexDirection: 'row',
+                  gap: '8px',
+                  paddingTop: '12px',
+                }}
+                onSubmit={(ev) => {
+                  ev.preventDefault();
+                  ev.stopPropagation();
+
+                  const target = ev.target as typeof ev.target & {
+                    placement: { value: string };
+                    destPhaseId: { value: string };
+                  };
+                  const destPhaseId = Number.parseInt(
+                    target.destPhaseId.value,
+                    10,
+                  );
+                  if (destPhaseId === 0) {
+                    return;
+                  }
+
+                  let originLosses = null;
+                  if (phase.bracketType === 1) {
+                    originLosses = 1;
+                  } else if (phase.bracketType === 2) {
+                    originLosses = 2;
+                  }
+                  const newOriginPhaseLinks = structuredClone(
+                    phase.originPhaseLinks,
+                  ) as (NewOriginPhaseLink | RendererOriginPhaseLink)[];
+                  const placementValue = target.placement.value;
+                  if (placementValue === 'remainder') {
+                    const newOriginPhaseLink: NewOriginPhaseLink = {
+                      cId: `${phase.id}-99`,
+                      destPhaseId,
+                      type: 2,
+                      originPlacement: nextPlacement,
+                      originPhaseId: phase.id,
+                      originLosses,
+                      maintainMatchup: false,
+                      isDefault: false,
+                      destSeedOrder: 99,
+                      destBracketSide: 1,
+                    };
+                    newOriginPhaseLinks.push(newOriginPhaseLink);
+                  } else {
+                    const originPlacement = Number.parseInt(placementValue, 10);
+                    const newOriginPhaseLink: NewOriginPhaseLink = {
+                      cId: `${phase.id}-99`,
+                      destPhaseId,
+                      type: 1,
+                      originPlacement,
+                      originPhaseId: phase.id,
+                      originLosses,
+                      maintainMatchup: false,
+                      isDefault: false,
+                      destSeedOrder: 99,
+                      destBracketSide: 1,
+                    };
+                    newOriginPhaseLinks.push(newOriginPhaseLink);
+                  }
+                  putOriginPhaseLinks(phase.id, newOriginPhaseLinks);
+                }}
+              >
+                <FormControl>
+                  <InputLabel id="placement-input-label">Placement</InputLabel>
+                  <Select
+                    disabled={fetching}
+                    defaultValue={nextPlacement}
+                    label="Placement"
+                    labelId="placement-input-label"
+                    name="placement"
+                    size="small"
+                    style={{ width: '165px' }}
+                  >
+                    {placementMenuItems}
+                  </Select>
+                </FormControl>
+                <FormControl>
+                  <InputLabel id="losers-progression-destination-phase-input-label">
+                    Destination Phase
+                  </InputLabel>
+                  <Select
+                    disabled={fetching}
+                    defaultValue={phase.winnersTargetPhaseId ?? 0}
+                    label="Destination Phase"
+                    labelId="losers-progression-destination-phase-input-label"
+                    name="destPhaseId"
+                    size="small"
+                    style={{ width: '165px' }}
+                  >
+                    {destinationPhaseMenuItems}
+                  </Select>
+                </FormControl>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  style={{ width: '70px' }}
+                >
+                  Add
                 </Button>
               </form>
             )}

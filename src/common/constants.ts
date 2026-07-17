@@ -10,7 +10,7 @@ export const singleElimPlacementToTopN = new Map([
   [65, 128],
   [129, 256],
   [257, 512],
-  [512, 1024],
+  [513, 1024],
 ]);
 
 export const losersPlacementToTopN = new Map([
