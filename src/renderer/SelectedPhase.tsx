@@ -19,11 +19,13 @@ export default function SelectedPhase({
   setPhase,
   phaseIdToName,
   phaseIdToBracketType,
+  openError,
 }: {
   phase: RendererPhase | null;
   setPhase: (phase: RendererPhase | null) => void;
   phaseIdToName: Map<number, string>;
   phaseIdToBracketType: Map<number, number>;
+  openError: (message: string) => void;
 }) {
   const [fetching, setFetching] = useState(false);
 
@@ -112,7 +114,21 @@ export default function SelectedPhase({
                           );
                         }
                       }
-                      console.log(newOriginPhaseLinks);
+                      try {
+                        setFetching(true);
+                        setPhase(
+                          await window.electron.putOriginPhaseLinks(
+                            phase.id,
+                            newOriginPhaseLinks,
+                          ),
+                        );
+                      } catch (e: unknown) {
+                        if (e instanceof Error) {
+                          openError(e.message);
+                        }
+                      } finally {
+                        setFetching(false);
+                      }
                     }}
                   >
                     {menuItems}

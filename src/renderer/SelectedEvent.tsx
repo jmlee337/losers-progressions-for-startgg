@@ -22,7 +22,13 @@ const Cell = styled(TableCell)`
   padding: 4px;
 `;
 
-export default function SelectedEvent({ event }: { event: RendererEvent }) {
+export default function SelectedEvent({
+  event,
+  openError,
+}: {
+  event: RendererEvent;
+  openError: (message: string) => void;
+}) {
   const [selectedPhase, setSelectedPhase] = useState<RendererPhase | null>(
     null,
   );
@@ -95,6 +101,7 @@ export default function SelectedEvent({ event }: { event: RendererEvent }) {
         setPhase={setSelectedPhase}
         phaseIdToName={phaseIdToName}
         phaseIdToBracketType={phaseIdToBracketType}
+        openError={openError}
       />
     </Stack>
   );

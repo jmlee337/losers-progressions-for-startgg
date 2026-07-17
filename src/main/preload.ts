@@ -1,6 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import {
+  NewOriginPhaseLink,
   RendererEvent,
+  RendererOriginPhaseLink,
+  RendererPhase,
   RendererTournament,
   SelectableEvent,
 } from '../common/types';
@@ -24,6 +27,11 @@ const electronHandler = {
     ipcRenderer.invoke('getTournament', slug),
   getEvent: (event: SelectableEvent): Promise<RendererEvent> =>
     ipcRenderer.invoke('getEvent', event),
+  putOriginPhaseLinks: (
+    phaseId: number,
+    originPhaseLinks: (NewOriginPhaseLink | RendererOriginPhaseLink)[],
+  ): Promise<RendererPhase> =>
+    ipcRenderer.invoke('putOriginPhaseLinks', phaseId, originPhaseLinks),
 };
 
 contextBridge.exposeInMainWorld('electron', electronHandler);

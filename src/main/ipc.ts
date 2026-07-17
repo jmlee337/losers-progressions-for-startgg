@@ -6,6 +6,7 @@ import {
   RendererEvent,
   RendererOriginPhaseLink,
   RendererPhase,
+  NewOriginPhaseLink,
 } from '../common/types';
 
 export default async function setupIPCs() {
@@ -289,6 +290,74 @@ export default async function setupIPCs() {
               bracketType: phaseJson.bracketType,
               groupCount: phaseJson.groupCount,
             };
+          }),
+        ),
+      };
+    },
+  );
+
+  ipcMain.removeAllListeners('putOriginPhaseLinks');
+  ipcMain.handle(
+    'putOriginPhaseLinks',
+    async (
+      event,
+      phaseId: number,
+      originPhaseLinks: (NewOriginPhaseLink | RendererOriginPhaseLink)[],
+    ): Promise<RendererPhase> => {
+      const response = await fetch(
+        `https://www.start.gg/api/-/rest/phase/${phaseId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'client-version': '20',
+            Cookie: ggSessionCookie,
+          },
+          body: JSON.stringify({
+            originPhaseLinks,
+          }),
+        },
+      );
+      if (response.status !== 200) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+
+      const json = await response.json();
+      if (!Array.isArray(json.entities?.phase)) {
+        throw new Error('no phase array');
+      }
+
+      const phaseJson = (json.entities.phase as any[]).find(
+        (phase) => phase.id === phaseId,
+      );
+      if (phaseJson === undefined) {
+        throw new Error('no updated phase');
+      }
+
+      if (!Array.isArray(json.entities?.phaseLink)) {
+        throw new Error('no phaseLink array');
+      }
+      const originPhaseLinksJson = (json.entities.phaseLink as any[]).filter(
+        (jsonPhaseLink) => jsonPhaseLink.originPhaseId === phaseId,
+      );
+
+      return {
+        id: phaseId,
+        name: phaseJson.name,
+        bracketType: phaseJson.bracketType,
+        groupCount: phaseJson.groupCount,
+        originPhaseLinks: originPhaseLinksJson.map(
+          (jsonPhaseLink): RendererOriginPhaseLink => ({
+            id: jsonPhaseLink.id,
+            destPhaseId: jsonPhaseLink.destPhaseId,
+            maintainMatchup: jsonPhaseLink.maintainMatchup,
+            isDefault: jsonPhaseLink.isDefault,
+            type: jsonPhaseLink.type,
+            destSeedOrder: jsonPhaseLink.destSeedOrder,
+            destBracketSide: jsonPhaseLink.destBracketSide,
+            originPlacement: jsonPhaseLink.originPlacement,
+            originPhaseId: jsonPhaseLink.originPhaseId,
+            originLosses: jsonPhaseLink.originLosses,
           }),
         ),
       };
