@@ -1,6 +1,7 @@
 import {
   Dialog,
   DialogContent,
+  IconButton,
   List,
   ListItem,
   ListItemText,
@@ -8,8 +9,13 @@ import {
   Select,
   Typography,
 } from '@mui/material';
-import { JSX, useMemo, useState } from 'react';
-import { RendererPhase } from '../common/types';
+import { JSX, useCallback, useMemo, useState } from 'react';
+import { DeleteForever } from '@mui/icons-material';
+import {
+  NewOriginPhaseLink,
+  RendererOriginPhaseLink,
+  RendererPhase,
+} from '../common/types';
 import getBracketTypeDesc from './getBracketTypeDesc';
 import getOriginPhaseLinkTypeDesc from './getOriginPhaseLinkTypeDesc';
 import getDestBracketSideDesc from './getDestBracketSideDesc';
@@ -19,15 +25,59 @@ export default function SelectedPhase({
   setPhase,
   phaseIdToName,
   phaseIdToBracketType,
+  refreshEvent,
   openError,
 }: {
   phase: RendererPhase | null;
   setPhase: (phase: RendererPhase | null) => void;
   phaseIdToName: Map<number, string>;
   phaseIdToBracketType: Map<number, number>;
+  refreshEvent: () => Promise<void>;
   openError: (message: string) => void;
 }) {
   const [fetching, setFetching] = useState(false);
+
+  const putNumProgressing = useCallback(
+    async (phaseId: number, numProgressing: number) => {
+      try {
+        setFetching(true);
+        setPhase(
+          await window.electron.putNumProgressing(phaseId, numProgressing),
+        );
+      } catch (e: unknown) {
+        if (e instanceof Error) {
+          openError(e.message);
+        }
+      } finally {
+        setFetching(false);
+      }
+    },
+    [openError, setPhase],
+  );
+
+  const putOriginPhaseLinks = useCallback(
+    async (
+      phaseId: number,
+      newOriginPhaseLinks: (NewOriginPhaseLink | RendererOriginPhaseLink)[],
+    ) => {
+      try {
+        setFetching(true);
+        setPhase(
+          await window.electron.putOriginPhaseLinks(
+            phaseId,
+            newOriginPhaseLinks,
+          ),
+        );
+      } catch (e: unknown) {
+        if (e instanceof Error) {
+          openError(e.message);
+        }
+      } finally {
+        setFetching(false);
+      }
+    },
+    [openError, setPhase],
+  );
 
   const menuItems = useMemo(() => {
     const arr: JSX.Element[] = [];
@@ -71,11 +121,12 @@ export default function SelectedPhase({
     <Dialog
       open={phase !== null}
       onClose={() => {
+        refreshEvent();
         setPhase(null);
       }}
     >
       {phase && (
-        <DialogContent>
+        <DialogContent style={{ paddingRight: '16px' }}>
           <Typography variant="h5">{phase.name}</Typography>
           <Typography variant="caption">
             {getBracketTypeDesc(phase.bracketType)} x{phase.groupCount}
@@ -95,7 +146,7 @@ export default function SelectedPhase({
                     size="small"
                     style={{ marginLeft: '8px' }}
                     value={`${originPhaseLink.destPhaseId}-${originPhaseLink.destBracketSide}`}
-                    onChange={async (event) => {
+                    onChange={(event) => {
                       const [destPhaseId, destBracketSide] =
                         event.target.value.split('-');
                       const newOriginPhaseLinks = structuredClone(
@@ -114,25 +165,29 @@ export default function SelectedPhase({
                           );
                         }
                       }
-                      try {
-                        setFetching(true);
-                        setPhase(
-                          await window.electron.putOriginPhaseLinks(
-                            phase.id,
-                            newOriginPhaseLinks,
-                          ),
-                        );
-                      } catch (e: unknown) {
-                        if (e instanceof Error) {
-                          openError(e.message);
-                        }
-                      } finally {
-                        setFetching(false);
-                      }
+                      putOriginPhaseLinks(phase.id, newOriginPhaseLinks);
                     }}
                   >
                     {menuItems}
                   </Select>
+                  <IconButton
+                    disabled={fetching}
+                    onClick={() => {
+                      const newOriginPhaseLinks = structuredClone(
+                        phase.originPhaseLinks,
+                      ).filter(
+                        (newOriginPhaseLink) =>
+                          newOriginPhaseLink.id !== originPhaseLink.id,
+                      );
+                      if (newOriginPhaseLinks.length === 0) {
+                        putNumProgressing(phase.id, 0);
+                      } else {
+                        putOriginPhaseLinks(phase.id, newOriginPhaseLinks);
+                      }
+                    }}
+                  >
+                    <DeleteForever />
+                  </IconButton>
                 </ListItem>
               ))}
             </List>

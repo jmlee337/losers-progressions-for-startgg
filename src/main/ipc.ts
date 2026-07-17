@@ -9,6 +9,25 @@ import {
   NewOriginPhaseLink,
 } from '../common/types';
 
+function toRendererOriginPhaseLinks(jsonPhaseLinks: any[], phaseId: number) {
+  return jsonPhaseLinks
+    .filter((jsonPhaseLink) => jsonPhaseLink.originPhaseId === phaseId)
+    .map(
+      (jsonPhaseLink): RendererOriginPhaseLink => ({
+        id: jsonPhaseLink.id,
+        destPhaseId: jsonPhaseLink.destPhaseId,
+        maintainMatchup: jsonPhaseLink.maintainMatchup,
+        isDefault: jsonPhaseLink.isDefault,
+        type: jsonPhaseLink.type,
+        destSeedOrder: jsonPhaseLink.destSeedOrder,
+        destBracketSide: jsonPhaseLink.destBracketSide,
+        originPlacement: jsonPhaseLink.originPlacement,
+        originPhaseId: jsonPhaseLink.originPhaseId,
+        originLosses: jsonPhaseLink.originLosses,
+      }),
+    );
+}
+
 export default async function setupIPCs() {
   const store = new Store<{
     base64EncryptedPassword: string;
@@ -256,39 +275,24 @@ export default async function setupIPCs() {
             }
 
             const json = await response.json();
-            const phaseJson = json.entities?.phase;
-            if (!(phaseJson instanceof Object)) {
+            const jsonPhase = json.entities?.phase;
+            if (!(jsonPhase instanceof Object)) {
               throw new Error('no tournament in response');
             }
 
-            const { id } = phaseJson;
+            const { id } = jsonPhase;
             let originPhaseLinks: RendererOriginPhaseLink[] = [];
             const jsonPhaseLinks = json.entities?.phaseLink;
             if (Array.isArray(jsonPhaseLinks)) {
-              originPhaseLinks = jsonPhaseLinks
-                .filter((jsonPhaseLink) => jsonPhaseLink.originPhaseId === id)
-                .map(
-                  (jsonPhaseLink): RendererOriginPhaseLink => ({
-                    id: jsonPhaseLink.id,
-                    destPhaseId: jsonPhaseLink.destPhaseId,
-                    maintainMatchup: jsonPhaseLink.maintainMatchup,
-                    isDefault: jsonPhaseLink.isDefault,
-                    type: jsonPhaseLink.type,
-                    destSeedOrder: jsonPhaseLink.destSeedOrder,
-                    destBracketSide: jsonPhaseLink.destBracketSide,
-                    originPlacement: jsonPhaseLink.originPlacement,
-                    originPhaseId: jsonPhaseLink.originPhaseId,
-                    originLosses: jsonPhaseLink.originLosses,
-                  }),
-                );
+              originPhaseLinks = toRendererOriginPhaseLinks(jsonPhaseLinks, id);
             }
 
             return {
               id,
               originPhaseLinks,
-              name: phaseJson.name,
-              bracketType: phaseJson.bracketType,
-              groupCount: phaseJson.groupCount,
+              name: jsonPhase.name,
+              bracketType: jsonPhase.bracketType,
+              groupCount: jsonPhase.groupCount,
             };
           }),
         ),
@@ -327,39 +331,73 @@ export default async function setupIPCs() {
         throw new Error('no phase array');
       }
 
-      const phaseJson = (json.entities.phase as any[]).find(
+      const jsonPhase = (json.entities.phase as any[]).find(
         (phase) => phase.id === phaseId,
       );
-      if (phaseJson === undefined) {
+      if (jsonPhase === undefined) {
         throw new Error('no updated phase');
       }
 
-      if (!Array.isArray(json.entities?.phaseLink)) {
+      const jsonPhaseLinks = json.entities?.phaseLink;
+      if (!Array.isArray(jsonPhaseLinks)) {
         throw new Error('no phaseLink array');
       }
-      const originPhaseLinksJson = (json.entities.phaseLink as any[]).filter(
-        (jsonPhaseLink) => jsonPhaseLink.originPhaseId === phaseId,
-      );
 
       return {
         id: phaseId,
-        name: phaseJson.name,
-        bracketType: phaseJson.bracketType,
-        groupCount: phaseJson.groupCount,
-        originPhaseLinks: originPhaseLinksJson.map(
-          (jsonPhaseLink): RendererOriginPhaseLink => ({
-            id: jsonPhaseLink.id,
-            destPhaseId: jsonPhaseLink.destPhaseId,
-            maintainMatchup: jsonPhaseLink.maintainMatchup,
-            isDefault: jsonPhaseLink.isDefault,
-            type: jsonPhaseLink.type,
-            destSeedOrder: jsonPhaseLink.destSeedOrder,
-            destBracketSide: jsonPhaseLink.destBracketSide,
-            originPlacement: jsonPhaseLink.originPlacement,
-            originPhaseId: jsonPhaseLink.originPhaseId,
-            originLosses: jsonPhaseLink.originLosses,
+        name: jsonPhase.name,
+        bracketType: jsonPhase.bracketType,
+        groupCount: jsonPhase.groupCount,
+        originPhaseLinks: toRendererOriginPhaseLinks(jsonPhaseLinks, phaseId),
+      };
+    },
+  );
+
+  ipcMain.removeAllListeners('putNumProgressing');
+  ipcMain.handle(
+    'putNumProgressing',
+    async (event, phaseId: number, numProgressing: number) => {
+      const response = await fetch(
+        `https://www.start.gg/api/-/rest/phase/${phaseId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'client-version': '20',
+            Cookie: ggSessionCookie,
+          },
+          body: JSON.stringify({
+            numProgressing: numProgressing.toString(10),
           }),
-        ),
+        },
+      );
+      if (response.status !== 200) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+
+      const json = await response.json();
+      if (!Array.isArray(json.entities?.phase)) {
+        throw new Error('no phase array');
+      }
+
+      const jsonPhase = (json.entities.phase as any[]).find(
+        (phase) => phase.id === phaseId,
+      );
+      if (jsonPhase === undefined) {
+        throw new Error('no updated phase');
+      }
+
+      const jsonPhaseLinks = json.entities?.phaseLink;
+      if (!Array.isArray(jsonPhaseLinks)) {
+        throw new Error('no phaseLink array');
+      }
+
+      return {
+        id: phaseId,
+        name: jsonPhase.name,
+        bracketType: jsonPhase.bracketType,
+        groupCount: jsonPhase.groupCount,
+        originPhaseLinks: toRendererOriginPhaseLinks(jsonPhaseLinks, phaseId),
       };
     },
   );

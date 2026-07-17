@@ -213,7 +213,15 @@ function Hello() {
                           </Tooltip>
                         </Stack>
                         {selectedEvent.phases.length > 0 && (
-                          <SelectedEvent event={selectedEvent} />
+                          <SelectedEvent
+                            event={selectedEvent}
+                            openError={openError}
+                            refresh={async () => {
+                              setSelectedEvent(
+                                await window.electron.getEvent(selectedEvent),
+                              );
+                            }}
+                          />
                         )}
                         {selectedEvent.phases.length === 0 && (
                           <Alert severity="warning">

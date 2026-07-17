@@ -24,9 +24,11 @@ const Cell = styled(TableCell)`
 
 export default function SelectedEvent({
   event,
+  refresh,
   openError,
 }: {
   event: RendererEvent;
+  refresh: () => Promise<void>;
   openError: (message: string) => void;
 }) {
   const [selectedPhase, setSelectedPhase] = useState<RendererPhase | null>(
@@ -101,6 +103,7 @@ export default function SelectedEvent({
         setPhase={setSelectedPhase}
         phaseIdToName={phaseIdToName}
         phaseIdToBracketType={phaseIdToBracketType}
+        refreshEvent={refresh}
         openError={openError}
       />
     </Stack>
