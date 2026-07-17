@@ -4,7 +4,8 @@ import {
   SelectableEvent,
   RendererTournament,
   RendererEvent,
-  ExistingOriginPhaseLink,
+  RendererOriginPhaseLink,
+  RendererPhase,
 } from '../common/types';
 
 export default async function setupIPCs() {
@@ -234,93 +235,62 @@ export default async function setupIPCs() {
   ipcMain.handle(
     'getEvent',
     async (ev, event: SelectableEvent): Promise<RendererEvent> => {
-      const intermediatePhases = await Promise.all(
-        event.phaseIds.map(async (phaseId) => {
-          const response = await fetch(
-            `https://www.start.gg/api/-/rest/phase/${phaseId}?expand[]=phaseLink`,
-            {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json',
-                'client-version': '20',
-                Cookie: ggSessionCookie,
-              },
-            },
-          );
-          if (response.status !== 200) {
-            throw new Error(`${response.status}: ${response.statusText}`);
-          }
-
-          const json = await response.json();
-          const phaseJson = json.entities?.phase;
-          if (!(phaseJson instanceof Object)) {
-            throw new Error('no tournament in response');
-          }
-
-          const { id } = phaseJson;
-          let originPhaseLinks: ExistingOriginPhaseLink[] = [];
-          const jsonPhaseLinks = json.entities?.phaseLink;
-          if (Array.isArray(jsonPhaseLinks)) {
-            originPhaseLinks = jsonPhaseLinks.filter(
-              (jsonPhaseLink) => jsonPhaseLink.originPhaseId === id,
-            );
-          }
-
-          return {
-            id,
-            originPhaseLinks,
-            name: phaseJson.name,
-            bracketType: phaseJson.bracketType,
-            groupCount: phaseJson.groupCount,
-          };
-        }),
-      );
-
-      const phaseIdToNameAndBracketType = new Map<
-        number,
-        { name: string; bracketType: number }
-      >();
-      intermediatePhases.forEach((intermediatePhase) => {
-        phaseIdToNameAndBracketType.set(intermediatePhase.id, {
-          name: intermediatePhase.name,
-          bracketType: intermediatePhase.bracketType,
-        });
-      });
       return {
         ...event,
-        phases: intermediatePhases.map((intermediatePhase) => ({
-          id: intermediatePhase.id,
-          name: intermediatePhase.name,
-          bracketType: intermediatePhase.bracketType,
-          groupCount: intermediatePhase.groupCount,
-          originPhaseLinks: intermediatePhase.originPhaseLinks.map(
-            (originPhaseLink) => {
-              const nameAndBracketType = phaseIdToNameAndBracketType.get(
-                originPhaseLink.destPhaseId,
-              );
-              if (!nameAndBracketType) {
-                throw new Error(
-                  `phase not found: ${originPhaseLink.destPhaseId}`,
+        phases: await Promise.all(
+          event.phaseIds.map(async (phaseId): Promise<RendererPhase> => {
+            const response = await fetch(
+              `https://www.start.gg/api/-/rest/phase/${phaseId}?expand[]=phaseLink`,
+              {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'client-version': '20',
+                  Cookie: ggSessionCookie,
+                },
+              },
+            );
+            if (response.status !== 200) {
+              throw new Error(`${response.status}: ${response.statusText}`);
+            }
+
+            const json = await response.json();
+            const phaseJson = json.entities?.phase;
+            if (!(phaseJson instanceof Object)) {
+              throw new Error('no tournament in response');
+            }
+
+            const { id } = phaseJson;
+            let originPhaseLinks: RendererOriginPhaseLink[] = [];
+            const jsonPhaseLinks = json.entities?.phaseLink;
+            if (Array.isArray(jsonPhaseLinks)) {
+              originPhaseLinks = jsonPhaseLinks
+                .filter((jsonPhaseLink) => jsonPhaseLink.originPhaseId === id)
+                .map(
+                  (jsonPhaseLink): RendererOriginPhaseLink => ({
+                    id: jsonPhaseLink.id,
+                    destPhaseId: jsonPhaseLink.destPhaseId,
+                    maintainMatchup: jsonPhaseLink.maintainMatchup,
+                    isDefault: jsonPhaseLink.isDefault,
+                    type: jsonPhaseLink.type,
+                    destSeedOrder: jsonPhaseLink.destSeedOrder,
+                    destBracketSide: jsonPhaseLink.destBracketSide,
+                    originPlacement: jsonPhaseLink.originPlacement,
+                    originPhaseId: jsonPhaseLink.originPhaseId,
+                    originLosses: jsonPhaseLink.originLosses,
+                  }),
                 );
-              }
+            }
 
-              let destBracketSideDesc = '';
-              if (nameAndBracketType.bracketType === 2) {
-                if (originPhaseLink.destBracketSide === 1) {
-                  destBracketSideDesc = 'Winners';
-                } else {
-                  destBracketSideDesc = 'Losers';
-                }
-              }
-
-              return {
-                ...originPhaseLink,
-                destPhaseName: nameAndBracketType.name,
-                destBracketSideDesc,
-              };
-            },
-          ),
-        })),
+            return {
+              id,
+              originPhaseLinks,
+              name: phaseJson.name,
+              bracketType: phaseJson.bracketType,
+              groupCount: phaseJson.groupCount,
+            };
+          }),
+        ),
       };
     },
   );

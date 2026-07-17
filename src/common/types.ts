@@ -15,13 +15,8 @@ export type NewOriginPhaseLink = BaseOriginPhaseLink & {
   cId: string;
 };
 
-export type ExistingOriginPhaseLink = BaseOriginPhaseLink & {
+export type RendererOriginPhaseLink = BaseOriginPhaseLink & {
   id: number;
-};
-
-export type RendererOriginPhaseLink = ExistingOriginPhaseLink & {
-  destPhaseName: string;
-  destBracketSideDesc: string;
 };
 
 export type RendererPhase = {

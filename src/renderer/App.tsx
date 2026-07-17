@@ -250,7 +250,10 @@ function Hello() {
               </>
             )}
             {!isLoggedIn && (
-              <Stack style={{ alignItems: 'start' }} spacing="8px">
+              <Stack
+                style={{ alignItems: 'start', marginLeft: '8px' }}
+                spacing="8px"
+              >
                 <TextField
                   label="start.gg email"
                   size="small"
@@ -294,7 +297,7 @@ function Hello() {
             )}
           </>
         )}
-        {!settled && <CircularProgress />}
+        {!settled && <CircularProgress style={{ marginLeft: '8px' }} />}
       </Stack>
       <Dialog open={settingsOpen}>
         <Stack
