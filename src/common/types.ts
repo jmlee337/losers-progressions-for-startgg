@@ -25,6 +25,7 @@ export type RendererPhase = {
   bracketType: number;
   groupCount: number;
   originPhaseLinks: RendererOriginPhaseLink[];
+  winnersTargetPhaseId: number | null;
 };
 
 export type SelectableEvent = {

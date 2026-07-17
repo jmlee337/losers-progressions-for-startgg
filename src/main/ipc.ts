@@ -260,7 +260,7 @@ export default async function setupIPCs() {
         phases: await Promise.all(
           event.phaseIds.map(async (phaseId): Promise<RendererPhase> => {
             const response = await fetch(
-              `https://www.start.gg/api/-/rest/phase/${phaseId}?expand[]=phaseLink`,
+              `https://www.start.gg/api/-/rest/phase/${phaseId}?expand[]=bracketSetup&expand[]=phaseLink`,
               {
                 method: 'GET',
                 headers: {
@@ -293,6 +293,7 @@ export default async function setupIPCs() {
               name: jsonPhase.name,
               bracketType: jsonPhase.bracketType,
               groupCount: jsonPhase.groupCount,
+              winnersTargetPhaseId: jsonPhase.winnersTargetPhaseId,
             };
           }),
         ),
@@ -349,6 +350,7 @@ export default async function setupIPCs() {
         bracketType: jsonPhase.bracketType,
         groupCount: jsonPhase.groupCount,
         originPhaseLinks: toRendererOriginPhaseLinks(jsonPhaseLinks, phaseId),
+        winnersTargetPhaseId: jsonPhase.winnersTargetPhaseId,
       };
     },
   );
@@ -362,7 +364,7 @@ export default async function setupIPCs() {
       groupTypeId: number,
       numProgressing: number,
       winnersTargetPhaseId: number,
-    ) => {
+    ): Promise<RendererPhase> => {
       const response = await fetch(
         `https://www.start.gg/api/-/rest/phase/${phaseId}`,
         {
@@ -407,6 +409,7 @@ export default async function setupIPCs() {
         bracketType: jsonPhase.bracketType,
         groupCount: jsonPhase.groupCount,
         originPhaseLinks: toRendererOriginPhaseLinks(jsonPhaseLinks, phaseId),
+        winnersTargetPhaseId: jsonPhase.winnersTargetPhaseId,
       };
     },
   );

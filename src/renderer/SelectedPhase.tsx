@@ -39,6 +39,8 @@ function bracketTypeToProgressingValues(bracketType: number) {
     case 6:
     case 7:
       return otherProgressingValues;
+    // elimination rounds don't support progressions
+    // exhibition, race, circuit idk
     default:
       return [];
   }
@@ -308,7 +310,7 @@ export default function SelectedPhase({
                   </InputLabel>
                   <Select
                     disabled={fetching}
-                    defaultValue={0}
+                    defaultValue={phase.winnersTargetPhaseId ?? 0}
                     label="Destination Phase"
                     labelId="destination-phase-input-label"
                     name="winnersTargetPhaseId"
