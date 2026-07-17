@@ -293,6 +293,7 @@ export default async function setupIPCs() {
               name: jsonPhase.name,
               bracketType: jsonPhase.bracketType,
               groupCount: jsonPhase.groupCount,
+              numProgressing: jsonPhase.numProgressing ?? 0,
               winnersTargetPhaseId: jsonPhase.winnersTargetPhaseId,
             };
           }),
@@ -350,6 +351,7 @@ export default async function setupIPCs() {
         bracketType: jsonPhase.bracketType,
         groupCount: jsonPhase.groupCount,
         originPhaseLinks: toRendererOriginPhaseLinks(jsonPhaseLinks, phaseId),
+        numProgressing: jsonPhase.numProgressing ?? 0,
         winnersTargetPhaseId: jsonPhase.winnersTargetPhaseId,
       };
     },
@@ -409,6 +411,7 @@ export default async function setupIPCs() {
         bracketType: jsonPhase.bracketType,
         groupCount: jsonPhase.groupCount,
         originPhaseLinks: toRendererOriginPhaseLinks(jsonPhaseLinks, phaseId),
+        numProgressing: jsonPhase.numProgressing ?? 0,
         winnersTargetPhaseId: jsonPhase.winnersTargetPhaseId,
       };
     },

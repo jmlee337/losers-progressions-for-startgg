@@ -2,6 +2,7 @@ import {
   Button,
   Dialog,
   DialogContent,
+  Divider,
   FormControl,
   IconButton,
   InputLabel,
@@ -22,6 +23,10 @@ import {
 import getBracketTypeDesc from './getBracketTypeDesc';
 import getOriginPhaseLinkTypeDesc from './getOriginPhaseLinkTypeDesc';
 import getDestBracketSideDesc from './getDestBracketSideDesc';
+import {
+  losersPlacementToTopN,
+  singleElimPlacementToTopN,
+} from '../common/constants';
 
 const seNumProgressingValues = [0, 1, 2, 4, 8, 16, 32];
 const deNumProgressingValues = [0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32];
@@ -160,6 +165,115 @@ export default function SelectedPhase({
     return arr;
   }, [phase, phaseIdToName, phaseIdToBracketType]);
 
+  const showNumProgressing = useMemo(() => {
+    if (!phase) {
+      return false;
+    }
+    if (phase.numProgressing === 0) {
+      return true;
+    }
+    if (phase.originPhaseLinks.length === 0) {
+      return true;
+    }
+
+    // se
+    if (phase.bracketType === 1) {
+      if (phase.originPhaseLinks.length !== 1) {
+        return false;
+      }
+
+      const [originPhaseLink] = phase.originPhaseLinks;
+      if (originPhaseLink.originLosses !== 0) {
+        return false;
+      }
+      const topN = singleElimPlacementToTopN.get(
+        originPhaseLink.originPlacement,
+      );
+      if (topN === undefined || topN !== phase.numProgressing) {
+        return false;
+      }
+      return true;
+    }
+
+    // de
+    if (phase.bracketType === 2) {
+      if (phase.originPhaseLinks.length === 1) {
+        const [originPhaseLink] = phase.originPhaseLinks;
+        return (
+          originPhaseLink.originLosses === 0 &&
+          originPhaseLink.originPlacement === 1
+        );
+      }
+      if (phase.originPhaseLinks.length !== 2) {
+        return false;
+      }
+
+      const originPhaseLinksWithZeroOriginLosses =
+        phase.originPhaseLinks.filter(
+          (originPhaseLink) => originPhaseLink.originLosses === 0,
+        );
+      if (originPhaseLinksWithZeroOriginLosses.length !== 1) {
+        return false;
+      }
+      const [winnersOriginPhaseLink] = originPhaseLinksWithZeroOriginLosses;
+
+      const originPhaseLinksWithOneOriginLoss = phase.originPhaseLinks.filter(
+        (originPhaseLink) => originPhaseLink.originLosses === 1,
+      );
+      if (originPhaseLinksWithOneOriginLoss.length !== 1) {
+        return false;
+      }
+      const [losersOriginPhaseLink] = originPhaseLinksWithOneOriginLoss;
+
+      if (
+        winnersOriginPhaseLink.destPhaseId !== losersOriginPhaseLink.destPhaseId
+      ) {
+        return false;
+      }
+
+      // is there also a way to check winnersTopN?
+      const losersTopN = losersPlacementToTopN.get(
+        losersOriginPhaseLink.originPlacement,
+      );
+      if (losersTopN === undefined || losersTopN !== phase.numProgressing) {
+        return false;
+      }
+      return true;
+    }
+
+    // rr, swiss, custom, ladder
+    if (
+      phase.bracketType === 3 ||
+      phase.bracketType === 4 ||
+      phase.bracketType === 6 ||
+      phase.bracketType === 7
+    ) {
+      if (phase.originPhaseLinks.length !== phase.numProgressing) {
+        return false;
+      }
+      if (phase.originPhaseLinks[0].originPlacement !== 1) {
+        return false;
+      }
+
+      const { destPhaseId } = phase.originPhaseLinks[0];
+      for (let i = 1; i < phase.originPhaseLinks.length; i += 1) {
+        const originPhaseLink = phase.originPhaseLinks[i];
+        const originPlacement = i + 1;
+        if (originPhaseLink.originPlacement !== originPlacement) {
+          return false;
+        }
+        if (originPhaseLink.destPhaseId !== destPhaseId) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    // elimination rounds don't support progressions
+    // exhibition, race, circuit idk
+    return false;
+  }, [phase]);
+
   const numProgressingMenuItems = useMemo(() => {
     if (phase === null) {
       return [];
@@ -191,7 +305,13 @@ export default function SelectedPhase({
       }}
     >
       {phase && (
-        <DialogContent style={{ paddingRight: '16px' }}>
+        <DialogContent
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            paddingRight: '16px',
+          }}
+        >
           <Typography variant="h5">{phase.name}</Typography>
           <Typography variant="caption">
             {getBracketTypeDesc(phase.bracketType)} x{phase.groupCount}
@@ -236,7 +356,7 @@ export default function SelectedPhase({
                     {originPhaseLinkMenuItems}
                   </Select>
                   <IconButton
-                    disabled={fetching}
+                    disabled={fetching || showNumProgressing}
                     onClick={() => {
                       const newOriginPhaseLinks = structuredClone(
                         phase.originPhaseLinks,
@@ -262,15 +382,22 @@ export default function SelectedPhase({
               ))}
             </List>
           )}
-          {phase.originPhaseLinks.length === 0 &&
+          {phase.originPhaseLinks.length > 0 &&
+            showNumProgressing &&
+            numProgressingMenuItems.length > 0 &&
+            destinationPhaseMenuItems.length > 0 && (
+              <Divider style={{ marginBottom: '8px' }} />
+            )}
+          {showNumProgressing &&
             numProgressingMenuItems.length > 0 &&
             destinationPhaseMenuItems.length > 0 && (
               <form
                 style={{
+                  alignSelf: 'end',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '8px',
-                  marginTop: '12px',
+                  paddingTop: '12px',
                   width: '200px',
                 }}
                 onSubmit={(ev) => {
@@ -295,7 +422,11 @@ export default function SelectedPhase({
                   </InputLabel>
                   <Select
                     disabled={fetching}
-                    defaultValue={0}
+                    defaultValue={
+                      phase.originPhaseLinks.length === 0
+                        ? 0
+                        : phase.numProgressing
+                    }
                     label="Number Progressing/Pool"
                     labelId="num-progressing-input-label"
                     name="numProgressing"

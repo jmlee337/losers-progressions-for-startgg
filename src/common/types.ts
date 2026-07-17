@@ -24,6 +24,7 @@ export type RendererPhase = {
   name: string;
   bracketType: number;
   groupCount: number;
+  numProgressing: number;
   originPhaseLinks: RendererOriginPhaseLink[];
   winnersTargetPhaseId: number | null;
 };

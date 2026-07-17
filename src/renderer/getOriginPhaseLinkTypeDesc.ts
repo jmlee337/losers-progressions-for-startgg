@@ -1,3 +1,7 @@
+import {
+  losersPlacementToTopN,
+  singleElimPlacementToTopN,
+} from '../common/constants';
 import { RendererOriginPhaseLink } from '../common/types';
 
 // https://stackoverflow.com/a/13627586
@@ -16,39 +20,6 @@ function withOrdinalSuffix(i: number) {
   return `${i}th`;
 }
 
-const singleElimPlacementToTopN = new Map([
-  [3, 4],
-  [5, 8],
-  [9, 16],
-  [17, 32],
-  // not possible via web
-  [33, 64],
-  [65, 128],
-  [129, 256],
-  [257, 512],
-  [512, 1024],
-]);
-
-const losersPlacementToTopN = new Map([
-  [5, 6],
-  [7, 8],
-  [9, 12],
-  [13, 16],
-  [17, 24],
-  [25, 32],
-  // not possible via web
-  [33, 48],
-  [49, 64],
-  [65, 96],
-  [97, 128],
-  [129, 192],
-  [193, 256],
-  [257, 384],
-  [385, 512],
-  [513, 768],
-  [769, 1024],
-]);
-
 export default function getOriginPhaseLinkTypeDesc(
   originPhaseLink: RendererOriginPhaseLink,
   bracketType: number,
@@ -58,9 +29,6 @@ export default function getOriginPhaseLinkTypeDesc(
       if (originPhaseLink.originLosses === 0) {
         if (originPhaseLink.originPlacement === 1) {
           return `First`;
-        }
-        if (originPhaseLink.originPlacement < 3) {
-          return `Top ${originPhaseLink.originPlacement}`;
         }
         const topN = singleElimPlacementToTopN.get(
           originPhaseLink.originPlacement,
@@ -84,9 +52,6 @@ export default function getOriginPhaseLinkTypeDesc(
       if (originPhaseLink.originLosses === 1) {
         if (originPhaseLink.originPlacement === 2) {
           return '2nd (Losers)';
-        }
-        if (originPhaseLink.originPlacement < 5) {
-          return `Top ${originPhaseLink.originPlacement} (Losers)`;
         }
         const topN = losersPlacementToTopN.get(originPhaseLink.originPlacement);
         if (topN === undefined) {
