@@ -405,14 +405,26 @@ export default function SelectedPhase({
                   ev.stopPropagation();
 
                   const target = ev.target as typeof ev.target & {
-                    numProgressing: { value: number };
-                    winnersTargetPhaseId: { value: number };
+                    numProgressing: { value: string };
+                    winnersTargetPhaseId: { value: string };
                   };
+                  const numProgressing = Number.parseInt(
+                    target.numProgressing.value,
+                    10,
+                  );
+                  const winnersTargetPhaseId = Number.parseInt(
+                    target.winnersTargetPhaseId.value,
+                    10,
+                  );
+                  if (winnersTargetPhaseId === 0) {
+                    return;
+                  }
+
                   putNumProgressing(
                     phase.id,
                     phase.bracketType,
-                    target.numProgressing.value,
-                    target.winnersTargetPhaseId.value,
+                    numProgressing,
+                    winnersTargetPhaseId,
                   );
                 }}
               >
