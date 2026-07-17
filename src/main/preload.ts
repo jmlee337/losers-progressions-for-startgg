@@ -34,9 +34,17 @@ const electronHandler = {
     ipcRenderer.invoke('putOriginPhaseLinks', phaseId, originPhaseLinks),
   putNumProgressing: (
     phaseId: number,
+    groupTypeId: number,
     numProgressing: number,
+    winnersTargetPhaseId: number,
   ): Promise<RendererPhase> =>
-    ipcRenderer.invoke('putNumProgressing', phaseId, numProgressing),
+    ipcRenderer.invoke(
+      'putNumProgressing',
+      phaseId,
+      groupTypeId,
+      numProgressing,
+      winnersTargetPhaseId,
+    ),
 };
 
 contextBridge.exposeInMainWorld('electron', electronHandler);

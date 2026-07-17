@@ -1,7 +1,10 @@
 import {
+  Button,
   Dialog,
   DialogContent,
+  FormControl,
   IconButton,
+  InputLabel,
   List,
   ListItem,
   ListItemText,
@@ -19,6 +22,34 @@ import {
 import getBracketTypeDesc from './getBracketTypeDesc';
 import getOriginPhaseLinkTypeDesc from './getOriginPhaseLinkTypeDesc';
 import getDestBracketSideDesc from './getDestBracketSideDesc';
+
+const seNumProgressingValues = [0, 1, 2, 4, 8, 16, 32];
+const deNumProgressingValues = [0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32];
+const otherProgressingValues = [
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+];
+function bracketTypeToProgressingValues(bracketType: number) {
+  switch (bracketType) {
+    case 1:
+      return seNumProgressingValues;
+    case 2:
+      return deNumProgressingValues;
+    case 3:
+    case 4:
+    case 6:
+    case 7:
+      return otherProgressingValues;
+    default:
+      return [];
+  }
+}
+function bracketTypeToMenuItems(bracketType: number) {
+  return bracketTypeToProgressingValues(bracketType).map((n) => (
+    <MenuItem value={n} key={n}>
+      {n}
+    </MenuItem>
+  ));
+}
 
 export default function SelectedPhase({
   phase,
@@ -38,11 +69,21 @@ export default function SelectedPhase({
   const [fetching, setFetching] = useState(false);
 
   const putNumProgressing = useCallback(
-    async (phaseId: number, numProgressing: number) => {
+    async (
+      phaseId: number,
+      groupTypeId: number,
+      numProgressing: number,
+      winnersTargetPhaseId: number,
+    ) => {
       try {
         setFetching(true);
         setPhase(
-          await window.electron.putNumProgressing(phaseId, numProgressing),
+          await window.electron.putNumProgressing(
+            phaseId,
+            groupTypeId,
+            numProgressing,
+            winnersTargetPhaseId,
+          ),
         );
       } catch (e: unknown) {
         if (e instanceof Error) {
@@ -79,7 +120,7 @@ export default function SelectedPhase({
     [openError, setPhase],
   );
 
-  const menuItems = useMemo(() => {
+  const originPhaseLinkMenuItems = useMemo(() => {
     const arr: JSX.Element[] = [];
     if (phase === null) {
       return arr;
@@ -116,6 +157,28 @@ export default function SelectedPhase({
     );
     return arr;
   }, [phase, phaseIdToName, phaseIdToBracketType]);
+
+  const numProgressingMenuItems = useMemo(() => {
+    if (phase === null) {
+      return [];
+    }
+
+    return bracketTypeToMenuItems(phase.bracketType);
+  }, [phase]);
+
+  const destinationPhaseMenuItems = useMemo(() => {
+    if (phase === null) {
+      return [];
+    }
+
+    return Array.from(phaseIdToName.entries())
+      .filter(([phaseId]) => phaseId !== phase.id)
+      .map(([phaseId, name]) => (
+        <MenuItem value={phaseId} key={phaseId}>
+          {name}
+        </MenuItem>
+      ));
+  }, [phase, phaseIdToName]);
 
   return (
     <Dialog
@@ -168,7 +231,7 @@ export default function SelectedPhase({
                       putOriginPhaseLinks(phase.id, newOriginPhaseLinks);
                     }}
                   >
-                    {menuItems}
+                    {originPhaseLinkMenuItems}
                   </Select>
                   <IconButton
                     disabled={fetching}
@@ -180,7 +243,12 @@ export default function SelectedPhase({
                           newOriginPhaseLink.id !== originPhaseLink.id,
                       );
                       if (newOriginPhaseLinks.length === 0) {
-                        putNumProgressing(phase.id, 0);
+                        putNumProgressing(
+                          phase.id,
+                          phase.bracketType,
+                          /* numProgressing= */ 0,
+                          /* winnersTargetPhaseId= */ 0,
+                        );
                       } else {
                         putOriginPhaseLinks(phase.id, newOriginPhaseLinks);
                       }
@@ -192,6 +260,68 @@ export default function SelectedPhase({
               ))}
             </List>
           )}
+          {phase.originPhaseLinks.length === 0 &&
+            numProgressingMenuItems.length > 0 &&
+            destinationPhaseMenuItems.length > 0 && (
+              <form
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  marginTop: '12px',
+                  width: '200px',
+                }}
+                onSubmit={(ev) => {
+                  ev.preventDefault();
+                  ev.stopPropagation();
+
+                  const target = ev.target as typeof ev.target & {
+                    numProgressing: { value: number };
+                    winnersTargetPhaseId: { value: number };
+                  };
+                  putNumProgressing(
+                    phase.id,
+                    phase.bracketType,
+                    target.numProgressing.value,
+                    target.winnersTargetPhaseId.value,
+                  );
+                }}
+              >
+                <FormControl>
+                  <InputLabel id="num-progressing-input-label">
+                    Number Progressing/Pool
+                  </InputLabel>
+                  <Select
+                    disabled={fetching}
+                    defaultValue={0}
+                    label="Number Progressing/Pool"
+                    labelId="num-progressing-input-label"
+                    name="numProgressing"
+                    size="small"
+                  >
+                    {numProgressingMenuItems}
+                  </Select>
+                </FormControl>
+                <FormControl>
+                  <InputLabel id="destination-phase-input-label">
+                    Destination Phase
+                  </InputLabel>
+                  <Select
+                    disabled={fetching}
+                    defaultValue={0}
+                    label="Destination Phase"
+                    labelId="destination-phase-input-label"
+                    name="winnersTargetPhaseId"
+                    size="small"
+                  >
+                    {destinationPhaseMenuItems}
+                  </Select>
+                </FormControl>
+                <Button type="submit" variant="contained">
+                  Save
+                </Button>
+              </form>
+            )}
         </DialogContent>
       )}
     </Dialog>

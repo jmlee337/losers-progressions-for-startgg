@@ -356,7 +356,13 @@ export default async function setupIPCs() {
   ipcMain.removeAllListeners('putNumProgressing');
   ipcMain.handle(
     'putNumProgressing',
-    async (event, phaseId: number, numProgressing: number) => {
+    async (
+      event,
+      phaseId: number,
+      groupTypeId: number,
+      numProgressing: number,
+      winnersTargetPhaseId: number,
+    ) => {
       const response = await fetch(
         `https://www.start.gg/api/-/rest/phase/${phaseId}`,
         {
@@ -367,7 +373,10 @@ export default async function setupIPCs() {
             Cookie: ggSessionCookie,
           },
           body: JSON.stringify({
+            groupTypeId,
             numProgressing: numProgressing.toString(10),
+            winnersTargetPhaseId:
+              winnersTargetPhaseId === 0 ? undefined : winnersTargetPhaseId,
           }),
         },
       );
