@@ -56,7 +56,7 @@ export default async function setupIPCs() {
   });
 
   ipcMain.removeAllListeners('update');
-  ipcMain.on('update', async () => {
+  ipcMain.handle('update', async () => {
     await shell.openExternal(
       'https://github.com/jmlee337/losers-progressions-for-startgg/releases/latest',
     );
