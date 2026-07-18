@@ -3,19 +3,19 @@ name: Test
 on: [push, pull_request]
 
 jobs:
-  test:
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
-
+  macos:
+    runs-on: macos-latest
     steps:
       - name: Check out Git repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
+
+      - name: Use Python 3.11 (for distutils)
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
 
       - name: Install Node.js and NPM
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -28,6 +28,75 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npm run package
           npm run lint
           npm exec tsc
+          npm run package
+
+      - name: upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos
+          path: |
+            release/build/LosersProgressionsForStartgg*.dmg
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v6
+
+      - name: Install Node.js and NPM
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: npm install
+        run: |
+          npm install
+
+      - name: npm test
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npm run lint
+          npm exec tsc
+          npm run package
+
+      - name: upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos
+          path: |
+            release/build/LosersProgressionsForStartgg*.exe
+
+  ubuntu:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v6
+
+      - name: Install Node.js and NPM
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: npm install
+        run: |
+          npm install
+
+      - name: npm test
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npm run lint
+          npm exec tsc
+          npm run package
+
+      - name: upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos
+          path: |
+            release/build/LosersProgressionsForStartgg*.AppImage
