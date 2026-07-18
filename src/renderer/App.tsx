@@ -340,7 +340,12 @@ function Hello() {
         )}
         {!settled && <CircularProgress style={{ marginLeft: '8px' }} />}
       </Stack>
-      <Dialog open={settingsOpen}>
+      <Dialog
+        open={settingsOpen}
+        onClose={() => {
+          setSettingsOpen(false);
+        }}
+      >
         <Stack
           direction="row"
           style={{
