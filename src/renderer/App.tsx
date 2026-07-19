@@ -190,31 +190,33 @@ function Hello() {
                         <ListItemText>{selectedTournament.name}</ListItemText>
                       </ListItemButton>
                       <Tooltip title="Refresh" placement="left">
-                        <IconButton
-                          disabled={gettingTournament}
-                          onClick={async () => {
-                            try {
-                              setGettingTournament(true);
-                              setSelectedTournament(
-                                await window.electron.getTournament(
-                                  selectedTournament.slug,
-                                ),
-                              );
-                            } catch (e: unknown) {
-                              if (e instanceof Error) {
-                                openError(e.message);
+                        <span>
+                          <IconButton
+                            disabled={gettingTournament}
+                            onClick={async () => {
+                              try {
+                                setGettingTournament(true);
+                                setSelectedTournament(
+                                  await window.electron.getTournament(
+                                    selectedTournament.slug,
+                                  ),
+                                );
+                              } catch (e: unknown) {
+                                if (e instanceof Error) {
+                                  openError(e.message);
+                                }
+                              } finally {
+                                setGettingTournament(false);
                               }
-                            } finally {
-                              setGettingTournament(false);
-                            }
-                          }}
-                        >
-                          {gettingTournament ? (
-                            <CircularProgress size="24px" />
-                          ) : (
-                            <Refresh />
-                          )}
-                        </IconButton>
+                            }}
+                          >
+                            {gettingTournament ? (
+                              <CircularProgress size="24px" />
+                            ) : (
+                              <Refresh />
+                            )}
+                          </IconButton>
+                        </span>
                       </Tooltip>
                     </Stack>
                     {selectedEvent && (
@@ -232,31 +234,33 @@ function Hello() {
                             <ListItemText>{selectedEvent.name}</ListItemText>
                           </ListItemButton>
                           <Tooltip title="Refresh" placement="left">
-                            <IconButton
-                              disabled={gettingEvent}
-                              onClick={async () => {
-                                try {
-                                  setGettingEvent(true);
-                                  setSelectedEvent(
-                                    await window.electron.getEvent(
-                                      selectedEvent,
-                                    ),
-                                  );
-                                } catch (e: unknown) {
-                                  if (e instanceof Error) {
-                                    openError(e.message);
+                            <span>
+                              <IconButton
+                                disabled={gettingEvent}
+                                onClick={async () => {
+                                  try {
+                                    setGettingEvent(true);
+                                    setSelectedEvent(
+                                      await window.electron.getEvent(
+                                        selectedEvent,
+                                      ),
+                                    );
+                                  } catch (e: unknown) {
+                                    if (e instanceof Error) {
+                                      openError(e.message);
+                                    }
+                                  } finally {
+                                    setGettingEvent(false);
                                   }
-                                } finally {
-                                  setGettingEvent(false);
-                                }
-                              }}
-                            >
-                              {gettingEvent ? (
-                                <CircularProgress size="24px" />
-                              ) : (
-                                <Refresh />
-                              )}
-                            </IconButton>
+                                }}
+                              >
+                                {gettingEvent ? (
+                                  <CircularProgress size="24px" />
+                                ) : (
+                                  <Refresh />
+                                )}
+                              </IconButton>
+                            </span>
                           </Tooltip>
                         </Stack>
                         {selectedEvent.phases.length > 0 && (

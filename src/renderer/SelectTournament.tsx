@@ -87,16 +87,18 @@ export default function SelectTournament({
           </Button>
         </form>
         <Tooltip title="Refresh" placement="left">
-          <IconButton
-            disabled={gettingTournaments}
-            onClick={() => getTournaments()}
-          >
-            {gettingTournaments ? (
-              <CircularProgress size="24px" />
-            ) : (
-              <Refresh />
-            )}
-          </IconButton>
+          <span>
+            <IconButton
+              disabled={gettingTournaments}
+              onClick={() => getTournaments()}
+            >
+              {gettingTournaments ? (
+                <CircularProgress size="24px" />
+              ) : (
+                <Refresh />
+              )}
+            </IconButton>
+          </span>
         </Tooltip>
       </Stack>
       <List disablePadding>
