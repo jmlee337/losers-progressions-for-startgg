@@ -48,7 +48,11 @@ export default function SelectTournament({
     <>
       <Stack
         direction="row"
-        style={{ alignItems: 'center', justifyContent: 'space-between' }}
+        style={{
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          height: '48px',
+        }}
       >
         <form
           style={{
