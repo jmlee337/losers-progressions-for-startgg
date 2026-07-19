@@ -79,9 +79,13 @@ export default async function setupIPCs() {
       return '';
     }
 
-    return safeStorage.decryptString(
-      Buffer.from(base64EncryptedPassword, 'base64'),
-    );
+    try {
+      return safeStorage.decryptString(
+        Buffer.from(base64EncryptedPassword, 'base64'),
+      );
+    } catch {
+      return '';
+    }
   });
 
   let ggSessionCookie = store.get('ggSessionCookie', '');
@@ -136,10 +140,16 @@ export default async function setupIPCs() {
     }
 
     store.set('email', email);
-    store.set(
-      'base64EncryptedPassword',
-      safeStorage.encryptString(password).toString('base64'),
-    );
+    if (safeStorage.isEncryptionAvailable()) {
+      try {
+        store.set(
+          'base64EncryptedPassword',
+          safeStorage.encryptString(password).toString('base64'),
+        );
+      } catch {
+        // best effort, just catch
+      }
+    }
 
     // eslint-disable-next-line no-restricted-syntax
     for (const setCookie of response.headers.getSetCookie()) {
