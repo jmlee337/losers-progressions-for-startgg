@@ -1,19 +1,28 @@
 import {
   Button,
+  CircularProgress,
+  IconButton,
   List,
   ListItemButton,
   ListItemText,
+  Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { FormEvent, useCallback, useState } from 'react';
+import { Refresh } from '@mui/icons-material';
 import { RendererTournament, SelectableTournament } from '../common/types';
 
 export default function SelectTournament({
+  gettingTournaments,
+  getTournaments,
   tournaments,
   setTournament,
   openError,
 }: {
+  gettingTournaments: boolean;
+  getTournaments: () => Promise<void>;
   tournaments: SelectableTournament[];
   setTournament: (tournament: RendererTournament) => void;
   openError: (message: string) => void;
@@ -37,38 +46,55 @@ export default function SelectTournament({
 
   return (
     <>
-      <form
-        style={{
-          display: 'flex',
-          flexDirection: 'row',
-          gap: '8px',
-          paddingLeft: '8px',
-          paddingRight: '8px',
-        }}
-        onSubmit={(ev: FormEvent<HTMLFormElement>) => {
-          ev.preventDefault();
-          ev.stopPropagation();
-
-          const target = ev.target as typeof ev.target & {
-            slug: { value: string };
-          };
-          const slug = target.slug.value;
-          if (slug) {
-            getTournament(slug);
-          }
-        }}
+      <Stack
+        direction="row"
+        style={{ alignItems: 'center', justifyContent: 'space-between' }}
       >
-        <TextField
-          disabled={getting}
-          label="tournament slug"
-          name="slug"
-          placeholder="out-of-the-blue-5"
-          size="small"
-        />
-        <Button disabled={getting} type="submit" variant="contained">
-          Fetch!
-        </Button>
-      </form>
+        <form
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            gap: '8px',
+            paddingLeft: '8px',
+            paddingRight: '8px',
+          }}
+          onSubmit={(ev: FormEvent<HTMLFormElement>) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+
+            const target = ev.target as typeof ev.target & {
+              slug: { value: string };
+            };
+            const slug = target.slug.value;
+            if (slug) {
+              getTournament(slug);
+            }
+          }}
+        >
+          <TextField
+            disabled={getting}
+            label="tournament slug"
+            name="slug"
+            placeholder="out-of-the-blue-5"
+            size="small"
+          />
+          <Button disabled={getting} type="submit" variant="contained">
+            Fetch!
+          </Button>
+        </form>
+        <Tooltip title="Refresh" placement="left">
+          <IconButton
+            disabled={gettingTournaments}
+            onClick={() => getTournaments()}
+          >
+            {gettingTournaments ? (
+              <CircularProgress size="24px" />
+            ) : (
+              <Refresh />
+            )}
+          </IconButton>
+        </Tooltip>
+      </Stack>
       <List disablePadding>
         {tournaments.map((tournament) => (
           <ListItemButton

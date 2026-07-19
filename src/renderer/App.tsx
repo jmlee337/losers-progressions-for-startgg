@@ -56,6 +56,7 @@ function Hello() {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  const [gettingTournaments, setGettingTournaments] = useState(false);
   const [tournaments, setTournaments] = useState<SelectableTournament[]>([]);
   const [gettingTournament, setGettingTournament] = useState(false);
   const [selectedTournament, setSelectedTournament] =
@@ -78,6 +79,20 @@ function Hello() {
     return 'Edit Progressions!';
   }, [isLoggedIn, selectedEvent, selectedTournament]);
 
+  const getTournaments = useCallback(async () => {
+    try {
+      setGettingTournaments(true);
+      setTournaments(await window.electron.getTournaments());
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        setError(e.message);
+        setErrorOpen(true);
+      }
+    } finally {
+      setGettingTournaments(false);
+    }
+  }, []);
+
   useEffect(() => {
     (async () => {
       try {
@@ -94,7 +109,7 @@ function Hello() {
         const initIsLoggedIn = await isLoggedInPromise;
         setIsLoggedIn(initIsLoggedIn);
         if (initIsLoggedIn) {
-          setTournaments(await window.electron.getTournaments());
+          await getTournaments();
         } else {
           setEmail(await window.electron.getEmail());
           setPassword(await window.electron.getPassword());
@@ -108,7 +123,7 @@ function Hello() {
         setSettled(true);
       }
     })();
-  }, []);
+  }, [getTournaments]);
   return (
     <>
       <AppBar
@@ -194,7 +209,11 @@ function Hello() {
                             }
                           }}
                         >
-                          <Refresh />
+                          {gettingTournament ? (
+                            <CircularProgress size="24px" />
+                          ) : (
+                            <Refresh />
+                          )}
                         </IconButton>
                       </Tooltip>
                     </Stack>
@@ -232,7 +251,11 @@ function Hello() {
                                 }
                               }}
                             >
-                              <Refresh />
+                              {gettingEvent ? (
+                                <CircularProgress size="24px" />
+                              ) : (
+                                <Refresh />
+                              )}
                             </IconButton>
                           </Tooltip>
                         </Stack>
@@ -283,6 +306,8 @@ function Hello() {
                 )}
                 {!selectedTournament && (
                   <SelectTournament
+                    gettingTournaments={gettingTournaments}
+                    getTournaments={getTournaments}
                     tournaments={tournaments}
                     setTournament={setSelectedTournament}
                     openError={openError}
