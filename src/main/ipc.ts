@@ -47,10 +47,11 @@ async function fetchWithCookie(
     throw new Error(`${response.status}: ${response.statusText}`);
   }
 
+  const text = await response.text();
   try {
-    return await response.json();
+    return JSON.parse(text);
   } catch {
-    throw new Error(await response.text());
+    throw new Error(text);
   }
 }
 
