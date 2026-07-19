@@ -30,7 +30,7 @@ import {
 import withOrdinalSuffix from './withOrdinalSuffix';
 
 function arrayRange(start: number, stop: number) {
-  if (start < stop) {
+  if (start > stop) {
     return [];
   }
 
