@@ -28,6 +28,32 @@ function toRendererOriginPhaseLinks(jsonPhaseLinks: any[], phaseId: number) {
     );
 }
 
+async function fetchWithCookie(
+  url: string,
+  method: string,
+  Cookie: string,
+  body: string | undefined = undefined,
+) {
+  const response = await fetch(url, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'client-version': '20',
+      Cookie,
+    },
+    body,
+  });
+  if (!response.ok) {
+    throw new Error(`${response.status}: ${response.statusText}`);
+  }
+
+  try {
+    return await response.json();
+  } catch {
+    throw new Error(await response.text());
+  }
+}
+
 export default async function setupIPCs() {
   const store = new Store<{
     base64EncryptedPassword: string;
@@ -110,7 +136,7 @@ export default async function setupIPCs() {
     if (response.status === 403) {
       return false;
     }
-    if (response.status !== 200) {
+    if (!response.ok) {
       throw new Error(`${response.status}: ${response.statusText}`);
     }
     return true;
@@ -135,7 +161,7 @@ export default async function setupIPCs() {
     if (response.status === 400) {
       throw new Error('Password incorrect');
     }
-    if (response.status !== 200) {
+    if (!response.ok) {
       throw new Error(`${response.status}: ${response.statusText}`);
     }
 
@@ -170,22 +196,11 @@ export default async function setupIPCs() {
 
   ipcMain.removeAllListeners('getTournaments');
   ipcMain.handle('getTournaments', async () => {
-    const response = await fetch(
+    const json = await fetchWithCookie(
       'https://www.start.gg/api/-/rest/tournaments?page=1&per_page=25&filter={%22isTournamentAdmin%22:true}',
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'client-version': '20',
-          Cookie: ggSessionCookie,
-        },
-      },
+      'GET',
+      ggSessionCookie,
     );
-    if (response.status !== 200) {
-      throw new Error(`${response.status}: ${response.statusText}`);
-    }
-
-    const json = await response.json();
     const tournamentsJson = json.items?.entities?.tournament;
     if (!Array.isArray(tournamentsJson)) {
       return [];
@@ -201,22 +216,11 @@ export default async function setupIPCs() {
   ipcMain.handle(
     'getTournament',
     async (event, slug: string): Promise<RendererTournament> => {
-      const response = await fetch(
+      const json = await fetchWithCookie(
         `https://www.start.gg/api/-/rest/tournament/${slug}?expand[]=event&expand[]=phase`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'client-version': '20',
-            Cookie: ggSessionCookie,
-          },
-        },
+        'GET',
+        ggSessionCookie,
       );
-      if (response.status !== 200) {
-        throw new Error(`${response.status}: ${response.statusText}`);
-      }
-
-      const json = await response.json();
       const tournamentJson = json.entities?.tournament;
       if (!(tournamentJson instanceof Object)) {
         throw new Error('no tournament in response');
@@ -269,22 +273,11 @@ export default async function setupIPCs() {
         ...event,
         phases: await Promise.all(
           event.phaseIds.map(async (phaseId): Promise<RendererPhase> => {
-            const response = await fetch(
+            const json = await fetchWithCookie(
               `https://www.start.gg/api/-/rest/phase/${phaseId}?expand[]=bracketSetup&expand[]=phaseLink`,
-              {
-                method: 'GET',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'client-version': '20',
-                  Cookie: ggSessionCookie,
-                },
-              },
+              'GET',
+              ggSessionCookie,
             );
-            if (response.status !== 200) {
-              throw new Error(`${response.status}: ${response.statusText}`);
-            }
-
-            const json = await response.json();
             const jsonPhase = json.entities?.phase;
             if (!(jsonPhase instanceof Object)) {
               throw new Error('no tournament in response');
@@ -320,25 +313,14 @@ export default async function setupIPCs() {
       phaseId: number,
       originPhaseLinks: (NewOriginPhaseLink | RendererOriginPhaseLink)[],
     ): Promise<RendererPhase> => {
-      const response = await fetch(
+      const json = await fetchWithCookie(
         `https://www.start.gg/api/-/rest/phase/${phaseId}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'client-version': '20',
-            Cookie: ggSessionCookie,
-          },
-          body: JSON.stringify({
-            originPhaseLinks,
-          }),
-        },
+        'PUT',
+        ggSessionCookie,
+        JSON.stringify({
+          originPhaseLinks,
+        }),
       );
-      if (response.status !== 200) {
-        throw new Error(`${response.status}: ${response.statusText}`);
-      }
-
-      const json = await response.json();
       if (!Array.isArray(json.entities?.phase)) {
         throw new Error('no phase array');
       }
@@ -377,28 +359,17 @@ export default async function setupIPCs() {
       numProgressing: number,
       winnersTargetPhaseId: number,
     ): Promise<RendererPhase> => {
-      const response = await fetch(
+      const json = await fetchWithCookie(
         `https://www.start.gg/api/-/rest/phase/${phaseId}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'client-version': '20',
-            Cookie: ggSessionCookie,
-          },
-          body: JSON.stringify({
-            groupTypeId,
-            numProgressing: numProgressing.toString(10),
-            winnersTargetPhaseId:
-              winnersTargetPhaseId === 0 ? undefined : winnersTargetPhaseId,
-          }),
-        },
+        'PUT',
+        ggSessionCookie,
+        JSON.stringify({
+          groupTypeId,
+          numProgressing: numProgressing.toString(10),
+          winnersTargetPhaseId:
+            winnersTargetPhaseId === 0 ? undefined : winnersTargetPhaseId,
+        }),
       );
-      if (response.status !== 200) {
-        throw new Error(`${response.status}: ${response.statusText}`);
-      }
-
-      const json = await response.json();
       if (!Array.isArray(json.entities?.phase)) {
         throw new Error('no phase array');
       }
