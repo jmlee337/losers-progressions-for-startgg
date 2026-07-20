@@ -221,7 +221,8 @@ export default async function setupIPCs() {
   });
 
   ipcMain.removeAllListeners('logout');
-  ipcMain.handle('logout', () => {
+  ipcMain.handle('logout', async () => {
+    await fetchWithCookie('https://www.start.gg/api/-/rest/user/logout', 'GET');
     cookieMap.clear();
     store.set('cookies', []);
   });
