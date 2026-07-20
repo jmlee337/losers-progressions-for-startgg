@@ -28,38 +28,11 @@ function toRendererOriginPhaseLinks(jsonPhaseLinks: any[], phaseId: number) {
     );
 }
 
-async function fetchWithCookie(
-  url: string,
-  method: string,
-  Cookie: string,
-  body: string | undefined = undefined,
-) {
-  const response = await fetch(url, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      'client-version': '20',
-      Cookie,
-    },
-    body,
-  });
-  if (!response.ok) {
-    throw new Error(`${response.status}: ${response.statusText}`);
-  }
-
-  const text = await response.text();
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error(text);
-  }
-}
-
 export default async function setupIPCs() {
   const store = new Store<{
     base64EncryptedPassword: string;
     email: string;
-    ggSessionCookie: string;
+    cookies: string[];
   }>();
 
   ipcMain.removeHandler('getAppVersion');
@@ -115,10 +88,71 @@ export default async function setupIPCs() {
     }
   });
 
-  let ggSessionCookie = store.get('ggSessionCookie', '');
+  const cookieMap = new Map<string, string>();
+  store.get('cookies', []).forEach((cookie) => {
+    const keyAndValue = cookie.split('=');
+    if (keyAndValue.length === 2) {
+      cookieMap.set(keyAndValue[0], keyAndValue[1]);
+    }
+  });
+  const getCookies = () => {
+    console.log(cookieMap);
+    if (cookieMap.size === 0) {
+      return '';
+    }
+
+    return Array.from(cookieMap.entries())
+      .map(([k, v]) => `${k}=${v}`)
+      .join(';');
+  };
+  const setCookies = (setCookie: string[]) => {
+    setCookie.forEach((cookie) => {
+      const parts = cookie.split(';');
+      if (parts.length > 0) {
+        const keyAndValue = parts[0].split('=');
+        if (keyAndValue.length === 2) {
+          cookieMap.set(keyAndValue[0], keyAndValue[1]);
+        }
+      }
+    });
+    store.set(
+      'cookies',
+      Array.from(cookieMap.entries()).map(([k, v]) => `${k}=${v}`),
+    );
+  };
+  const fetchWithCookie = async (
+    url: string,
+    method: string,
+    body: string | undefined = undefined,
+  ) => {
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'client-version': '20',
+        Cookie: getCookies(),
+      },
+      body,
+    });
+    if (!response.ok) {
+      throw new Error(`${response.status}: ${response.statusText}`);
+    }
+
+    const text = await response.text();
+    try {
+      const json = JSON.parse(text);
+      const setCookie = response.headers.getSetCookie();
+      console.log(`Set-Cookie: ${JSON.stringify(setCookie)}`);
+      setCookies(setCookie);
+      return json;
+    } catch (e: unknown) {
+      throw new Error(text, { cause: e });
+    }
+  };
+
   ipcMain.removeAllListeners('isLoggedIn');
   ipcMain.handle('isLoggedIn', async () => {
-    if (ggSessionCookie === '') {
+    if (!cookieMap.has('gg_session')) {
       return false;
     }
 
@@ -129,7 +163,7 @@ export default async function setupIPCs() {
         headers: {
           'Content-Type': 'application/json',
           'client-version': '20',
-          Cookie: ggSessionCookie,
+          Cookie: getCookies(),
         },
       },
     );
@@ -140,6 +174,9 @@ export default async function setupIPCs() {
     if (!response.ok) {
       throw new Error(`${response.status}: ${response.statusText}`);
     }
+    const setCookie = response.headers.getSetCookie();
+    console.log(`Set-Cookie: ${JSON.stringify(setCookie)}`);
+    setCookies(setCookie);
     return true;
   });
 
@@ -178,21 +215,15 @@ export default async function setupIPCs() {
       }
     }
 
-    // eslint-disable-next-line no-restricted-syntax
-    for (const setCookie of response.headers.getSetCookie()) {
-      if (setCookie.startsWith('gg_session=')) {
-        [ggSessionCookie] = setCookie.split(';');
-        store.set('ggSessionCookie', ggSessionCookie);
-        return;
-      }
-    }
-    throw new Error('Login response did not contain session cookie');
+    const setCookie = response.headers.getSetCookie();
+    console.log(`Set-Cookie: ${JSON.stringify(setCookie)}`);
+    setCookies(setCookie);
   });
 
   ipcMain.removeAllListeners('logout');
   ipcMain.handle('logout', () => {
-    ggSessionCookie = '';
-    store.set('ggSessionCookie', ggSessionCookie);
+    cookieMap.clear();
+    store.set('cookies', []);
   });
 
   ipcMain.removeAllListeners('getTournaments');
@@ -200,7 +231,6 @@ export default async function setupIPCs() {
     const json = await fetchWithCookie(
       'https://www.start.gg/api/-/rest/tournaments?page=1&per_page=25&filter={%22isTournamentAdmin%22:true}',
       'GET',
-      ggSessionCookie,
     );
     const tournamentsJson = json.items?.entities?.tournament;
     if (!Array.isArray(tournamentsJson)) {
@@ -220,7 +250,6 @@ export default async function setupIPCs() {
       const json = await fetchWithCookie(
         `https://www.start.gg/api/-/rest/tournament/${slug}?expand[]=event&expand[]=phase`,
         'GET',
-        ggSessionCookie,
       );
       const tournamentJson = json.entities?.tournament;
       if (!(tournamentJson instanceof Object)) {
@@ -277,7 +306,6 @@ export default async function setupIPCs() {
             const json = await fetchWithCookie(
               `https://www.start.gg/api/-/rest/phase/${phaseId}?expand[]=bracketSetup&expand[]=phaseLink`,
               'GET',
-              ggSessionCookie,
             );
             const jsonPhase = json.entities?.phase;
             if (!(jsonPhase instanceof Object)) {
@@ -317,7 +345,6 @@ export default async function setupIPCs() {
       const json = await fetchWithCookie(
         `https://www.start.gg/api/-/rest/phase/${phaseId}`,
         'PUT',
-        ggSessionCookie,
         JSON.stringify({
           originPhaseLinks,
         }),
@@ -363,7 +390,6 @@ export default async function setupIPCs() {
       const json = await fetchWithCookie(
         `https://www.start.gg/api/-/rest/phase/${phaseId}`,
         'PUT',
-        ggSessionCookie,
         JSON.stringify({
           groupTypeId,
           numProgressing: numProgressing.toString(10),
