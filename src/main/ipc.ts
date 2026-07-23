@@ -300,37 +300,39 @@ export default async function setupIPCs() {
   ipcMain.handle(
     'getEvent',
     async (ev, event: SelectableEvent): Promise<RendererEvent> => {
+      const phases: RendererPhase[] = [];
+      // eslint-disable-next-line no-restricted-syntax
+      for (const phaseId of event.phaseIds) {
+        // eslint-disable-next-line no-await-in-loop
+        const json = await fetchWithCookie(
+          `https://www.start.gg/api/-/rest/phase/${phaseId}?expand[]=bracketSetup&expand[]=phaseLink`,
+          'GET',
+        );
+        const jsonPhase = json.entities?.phase;
+        if (!(jsonPhase instanceof Object)) {
+          throw new Error('no tournament in response');
+        }
+
+        const { id } = jsonPhase;
+        let originPhaseLinks: RendererOriginPhaseLink[] = [];
+        const jsonPhaseLinks = json.entities?.phaseLink;
+        if (Array.isArray(jsonPhaseLinks)) {
+          originPhaseLinks = toRendererOriginPhaseLinks(jsonPhaseLinks, id);
+        }
+
+        phases.push({
+          id,
+          originPhaseLinks,
+          name: jsonPhase.name,
+          bracketType: jsonPhase.bracketType,
+          groupCount: jsonPhase.groupCount,
+          numProgressing: jsonPhase.numProgressing ?? 0,
+          winnersTargetPhaseId: jsonPhase.winnersTargetPhaseId,
+        });
+      }
       return {
         ...event,
-        phases: await Promise.all(
-          event.phaseIds.map(async (phaseId): Promise<RendererPhase> => {
-            const json = await fetchWithCookie(
-              `https://www.start.gg/api/-/rest/phase/${phaseId}?expand[]=bracketSetup&expand[]=phaseLink`,
-              'GET',
-            );
-            const jsonPhase = json.entities?.phase;
-            if (!(jsonPhase instanceof Object)) {
-              throw new Error('no tournament in response');
-            }
-
-            const { id } = jsonPhase;
-            let originPhaseLinks: RendererOriginPhaseLink[] = [];
-            const jsonPhaseLinks = json.entities?.phaseLink;
-            if (Array.isArray(jsonPhaseLinks)) {
-              originPhaseLinks = toRendererOriginPhaseLinks(jsonPhaseLinks, id);
-            }
-
-            return {
-              id,
-              originPhaseLinks,
-              name: jsonPhase.name,
-              bracketType: jsonPhase.bracketType,
-              groupCount: jsonPhase.groupCount,
-              numProgressing: jsonPhase.numProgressing ?? 0,
-              winnersTargetPhaseId: jsonPhase.winnersTargetPhaseId,
-            };
-          }),
-        ),
+        phases,
       };
     },
   );
