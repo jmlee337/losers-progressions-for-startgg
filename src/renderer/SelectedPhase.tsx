@@ -2,6 +2,7 @@ import {
   Button,
   Dialog,
   DialogContent,
+  DialogContentText,
   Divider,
   FormControl,
   IconButton,
@@ -11,9 +12,10 @@ import {
   ListItemText,
   MenuItem,
   Select,
+  Stack,
   Typography,
 } from '@mui/material';
-import { JSX, useCallback, useMemo, useState } from 'react';
+import { JSX, useCallback, useEffect, useMemo, useState } from 'react';
 import { DeleteForever } from '@mui/icons-material';
 import {
   NewOriginPhaseLink,
@@ -371,13 +373,6 @@ export default function SelectedPhase({
       ));
   }, [phase, phaseIdToName]);
 
-  const nextPlacement = useMemo(() => {
-    if (!phase) {
-      return 0;
-    }
-
-    return getNextPlacement(phase);
-  }, [phase]);
   const placementMenuItems = useMemo(() => {
     if (
       phase === null ||
@@ -406,6 +401,21 @@ export default function SelectedPhase({
     );
   }, [phase]);
 
+  const [numProgressing, setNumProgressing] = useState(0);
+  const [normalDestinationPhaseId, setNormalDestinationPhaseId] = useState(0);
+  const [placement, setPlacement] = useState<number | 'remainder'>('remainder');
+  const [losersDestinationPhaseId, setLosersDestinationPhaseId] = useState('');
+  useEffect(() => {
+    if (phase) {
+      setNumProgressing(
+        phase.originPhaseLinks.length === 0 ? 0 : phase.numProgressing,
+      );
+      setNormalDestinationPhaseId(phase.winnersTargetPhaseId ?? 0);
+      setPlacement(getNextPlacement(phase));
+      setLosersDestinationPhaseId(`${phase.winnersTargetPhaseId ?? 0}-1`);
+    }
+  }, [phase]);
+
   return (
     <Dialog
       open={phase !== null}
@@ -423,11 +433,14 @@ export default function SelectedPhase({
           }}
         >
           <Typography variant="h5">{phase.name}</Typography>
-          <Typography variant="caption">
+          <Typography variant="caption" style={{ marginBottom: '16px' }}>
             {getBracketTypeDesc(phase.bracketType)} x{phase.groupCount}
           </Typography>
           {phase.originPhaseLinks.length > 0 && (
-            <List>
+            <List
+              disablePadding
+              style={{ marginTop: '-8px', marginBottom: '8px' }}
+            >
               {phase.originPhaseLinks.map((originPhaseLink) => (
                 <ListItem key={originPhaseLink.id} disableGutters>
                   <ListItemText>
@@ -492,204 +505,201 @@ export default function SelectedPhase({
               ))}
             </List>
           )}
-          {phase.originPhaseLinks.length > 0 &&
-            showNumProgressing &&
-            numProgressingMenuItems.length > 0 &&
-            destinationPhaseMenuItems.length > 0 && (
-              <Divider style={{ marginBottom: '8px' }} />
-            )}
           {showNumProgressing &&
             numProgressingMenuItems.length > 0 &&
             destinationPhaseMenuItems.length > 0 && (
-              <form
-                style={{
-                  alignSelf: 'end',
-                  display: 'flex',
-                  flexDirection: 'row',
-                  gap: '8px',
-                  paddingTop: '12px',
-                }}
-                onSubmit={(ev) => {
-                  ev.preventDefault();
-                  ev.stopPropagation();
-
-                  const target = ev.target as typeof ev.target & {
-                    numProgressing: { value: string };
-                    winnersTargetPhaseId: { value: string };
-                  };
-                  const numProgressing = Number.parseInt(
-                    target.numProgressing.value,
-                    10,
-                  );
-                  const winnersTargetPhaseId = Number.parseInt(
-                    target.winnersTargetPhaseId.value,
-                    10,
-                  );
-                  if (winnersTargetPhaseId === 0) {
-                    return;
-                  }
-
-                  putNumProgressing(
-                    phase.id,
-                    phase.bracketType,
-                    numProgressing,
-                    winnersTargetPhaseId,
-                  );
-                }}
-              >
-                <FormControl>
-                  <InputLabel id="num-progressing-input-label">
-                    Number Progressing/Pool
-                  </InputLabel>
-                  <Select
-                    disabled={fetching}
-                    defaultValue={
-                      phase.originPhaseLinks.length === 0
-                        ? 0
-                        : phase.numProgressing
-                    }
-                    label="Number Progressing/Pool"
-                    labelId="num-progressing-input-label"
-                    name="numProgressing"
-                    size="small"
-                    style={{ width: '165px' }}
-                  >
-                    {numProgressingMenuItems}
-                  </Select>
-                </FormControl>
-                <FormControl>
-                  <InputLabel id="num-progressing-destination-phase-input-label">
-                    Destination Phase
-                  </InputLabel>
-                  <Select
-                    disabled={fetching}
-                    defaultValue={phase.winnersTargetPhaseId ?? 0}
-                    label="Destination Phase"
-                    labelId="num-progressing-destination-phase-input-label"
-                    name="winnersTargetPhaseId"
-                    size="small"
-                    style={{ width: '165px' }}
-                  >
-                    {destinationPhaseMenuItems}
-                  </Select>
-                </FormControl>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  style={{ width: '70px' }}
+              <>
+                <Divider textAlign="right">
+                  <DialogContentText variant="caption">
+                    Normal Progressions
+                  </DialogContentText>
+                </Divider>
+                <Stack
+                  direction="row"
+                  style={{
+                    alignSelf: 'end',
+                    gap: '8px',
+                    paddingTop: '12px',
+                    marginBottom: '16px',
+                  }}
                 >
-                  Save
-                </Button>
-              </form>
+                  <FormControl>
+                    <InputLabel id="num-progressing-input-label">
+                      Per Pool
+                    </InputLabel>
+                    <Select
+                      disabled={fetching}
+                      label="Per Pool"
+                      labelId="num-progressing-input-label"
+                      name="numProgressing"
+                      size="small"
+                      style={{ width: '126px' }}
+                      value={numProgressing}
+                      onChange={(ev) => {
+                        setNumProgressing(ev.target.value);
+                      }}
+                    >
+                      {numProgressingMenuItems}
+                    </Select>
+                  </FormControl>
+                  <FormControl>
+                    <InputLabel id="num-progressing-destination-phase-input-label">
+                      Destination Phase
+                    </InputLabel>
+                    <Select
+                      disabled={fetching}
+                      label="Destination Phase"
+                      labelId="num-progressing-destination-phase-input-label"
+                      name="winnersTargetPhaseId"
+                      size="small"
+                      style={{ width: '228px' }}
+                      value={normalDestinationPhaseId}
+                      onChange={(ev) => {
+                        setNormalDestinationPhaseId(ev.target.value);
+                      }}
+                    >
+                      {destinationPhaseMenuItems}
+                    </Select>
+                  </FormControl>
+                  <Button
+                    disabled={fetching}
+                    variant="contained"
+                    style={{ width: '70px' }}
+                    onClick={() => {
+                      if (normalDestinationPhaseId === 0) {
+                        return;
+                      }
+
+                      putNumProgressing(
+                        phase.id,
+                        phase.bracketType,
+                        numProgressing,
+                        normalDestinationPhaseId,
+                      );
+                    }}
+                  >
+                    Save
+                  </Button>
+                </Stack>
+              </>
             )}
           {phase.numProgressing > 0 &&
             phase.originPhaseLinks.length > 0 &&
             placementMenuItems.length > 0 && (
-              <form
-                style={{
-                  alignSelf: 'end',
-                  display: 'flex',
-                  flexDirection: 'row',
-                  gap: '8px',
-                  paddingTop: '12px',
-                }}
-                onSubmit={(ev) => {
-                  ev.preventDefault();
-                  ev.stopPropagation();
-
-                  const target = ev.target as typeof ev.target & {
-                    placement: { value: string };
-                    destPhaseId: { value: string };
-                  };
-                  const destPhaseId = Number.parseInt(
-                    target.destPhaseId.value,
-                    10,
-                  );
-                  if (destPhaseId === 0) {
-                    return;
-                  }
-
-                  let originLosses = null;
-                  if (phase.bracketType === 1) {
-                    originLosses = 1;
-                  } else if (phase.bracketType === 2) {
-                    originLosses = 2;
-                  }
-                  const newOriginPhaseLinks = structuredClone(
-                    phase.originPhaseLinks,
-                  ) as (NewOriginPhaseLink | RendererOriginPhaseLink)[];
-                  const placementValue = target.placement.value;
-                  if (placementValue === 'remainder') {
-                    const newOriginPhaseLink: NewOriginPhaseLink = {
-                      cId: `${phase.id}-99`,
-                      destPhaseId,
-                      type: 2,
-                      originPlacement: nextPlacement,
-                      originPhaseId: phase.id,
-                      originLosses,
-                      maintainMatchup: false,
-                      isDefault: false,
-                      destSeedOrder: 99,
-                      destBracketSide: 1,
-                    };
-                    newOriginPhaseLinks.push(newOriginPhaseLink);
-                  } else {
-                    const originPlacement = Number.parseInt(placementValue, 10);
-                    const newOriginPhaseLink: NewOriginPhaseLink = {
-                      cId: `${phase.id}-99`,
-                      destPhaseId,
-                      type: 1,
-                      originPlacement,
-                      originPhaseId: phase.id,
-                      originLosses,
-                      maintainMatchup: false,
-                      isDefault: false,
-                      destSeedOrder: 99,
-                      destBracketSide: 1,
-                    };
-                    newOriginPhaseLinks.push(newOriginPhaseLink);
-                  }
-                  putOriginPhaseLinks(phase.id, newOriginPhaseLinks);
-                }}
-              >
-                <FormControl>
-                  <InputLabel id="placement-input-label">Placement</InputLabel>
-                  <Select
-                    disabled={fetching}
-                    defaultValue={nextPlacement}
-                    label="Placement"
-                    labelId="placement-input-label"
-                    name="placement"
-                    size="small"
-                    style={{ width: '165px' }}
-                  >
-                    {placementMenuItems}
-                  </Select>
-                </FormControl>
-                <FormControl>
-                  <InputLabel id="losers-progression-destination-phase-input-label">
-                    Destination Phase
-                  </InputLabel>
-                  <Select
-                    disabled={fetching}
-                    defaultValue={phase.winnersTargetPhaseId ?? 0}
-                    label="Destination Phase"
-                    labelId="losers-progression-destination-phase-input-label"
-                    name="destPhaseId"
-                    size="small"
-                    style={{ width: '165px' }}
-                  >
-                    {destinationPhaseMenuItems}
-                  </Select>
-                </FormControl>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  style={{ width: '70px' }}
+              <>
+                <Divider textAlign="right">
+                  <DialogContentText variant="caption">
+                    Losers Progressions
+                  </DialogContentText>
+                </Divider>
+                <Stack
+                  direction="row"
+                  style={{
+                    alignSelf: 'end',
+                    gap: '8px',
+                    paddingTop: '12px',
+                  }}
                 >
-                  Add
-                </Button>
-              </form>
+                  <FormControl>
+                    <InputLabel id="placement-input-label">
+                      Placement
+                    </InputLabel>
+                    <Select
+                      disabled={fetching}
+                      label="Placement"
+                      labelId="placement-input-label"
+                      name="placement"
+                      size="small"
+                      style={{ width: '126px' }}
+                      value={placement}
+                      onChange={(ev) => {
+                        setPlacement(ev.target.value);
+                      }}
+                    >
+                      {placementMenuItems}
+                    </Select>
+                  </FormControl>
+                  <FormControl>
+                    <InputLabel id="losers-progression-destination-phase-input-label">
+                      Destination Phase
+                    </InputLabel>
+                    <Select
+                      disabled={fetching}
+                      label="Destination Phase"
+                      labelId="losers-progression-destination-phase-input-label"
+                      name="destPhaseId"
+                      size="small"
+                      style={{ width: '228px' }}
+                      value={losersDestinationPhaseId}
+                      onChange={(ev) => {
+                        setLosersDestinationPhaseId(ev.target.value);
+                      }}
+                    >
+                      {originPhaseLinkMenuItems}
+                    </Select>
+                  </FormControl>
+                  <Button
+                    disabled={fetching}
+                    variant="contained"
+                    style={{ width: '70px' }}
+                    onClick={() => {
+                      const [destPhaseIdStr, destBracketSideStr] =
+                        losersDestinationPhaseId.split('-');
+                      if (!destPhaseIdStr || !destBracketSideStr) {
+                        return;
+                      }
+
+                      const destPhaseId = Number.parseInt(destPhaseIdStr, 10);
+                      const destBracketSide = Number.parseInt(
+                        destBracketSideStr,
+                        10,
+                      );
+
+                      let originLosses = null;
+                      if (phase.bracketType === 1) {
+                        originLosses = 1;
+                      } else if (phase.bracketType === 2) {
+                        originLosses = 2;
+                      }
+                      const newOriginPhaseLinks = structuredClone(
+                        phase.originPhaseLinks,
+                      ) as (NewOriginPhaseLink | RendererOriginPhaseLink)[];
+                      if (placement === 'remainder') {
+                        const newOriginPhaseLink: NewOriginPhaseLink = {
+                          cId: `${phase.id}-99`,
+                          destPhaseId,
+                          destBracketSide,
+                          type: 2,
+                          originPlacement: getNextPlacement(phase),
+                          originPhaseId: phase.id,
+                          originLosses,
+                          maintainMatchup: false,
+                          isDefault: false,
+                          destSeedOrder: 99,
+                        };
+                        newOriginPhaseLinks.push(newOriginPhaseLink);
+                      } else {
+                        const newOriginPhaseLink: NewOriginPhaseLink = {
+                          cId: `${phase.id}-99`,
+                          destPhaseId,
+                          destBracketSide,
+                          type: 1,
+                          originPlacement: placement,
+                          originPhaseId: phase.id,
+                          originLosses,
+                          maintainMatchup: false,
+                          isDefault: false,
+                          destSeedOrder: 99,
+                        };
+                        newOriginPhaseLinks.push(newOriginPhaseLink);
+                      }
+                      putOriginPhaseLinks(phase.id, newOriginPhaseLinks);
+                    }}
+                  >
+                    Add
+                  </Button>
+                </Stack>
+              </>
             )}
         </DialogContent>
       )}
